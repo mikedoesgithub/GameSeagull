@@ -8,18 +8,21 @@
 @property (nonatomic) int currentColorHue;
 @property (nonatomic, retain) SKShapeNode *fullTrajNode;
 - (void)drawFullMultiBallTrajectory;
+- (void)autoAimBestBall;
 @end
 
 @interface PoolScene2 : SKScene
 @property (nonatomic) int currentColorHue;
 @property (nonatomic, retain) SKShapeNode *fullTrajNode;
 - (void)drawFullMultiBallTrajectory;
+- (void)autoAimBestBall;
 @end
 
 @interface PoolScene3 : SKScene
 @property (nonatomic) int currentColorHue;
 @property (nonatomic, retain) SKShapeNode *fullTrajNode;
 - (void)drawFullMultiBallTrajectory;
+- (void)autoAimBestBall;
 @end
 
 @interface BeerView : SCNView
@@ -56,10 +59,41 @@
 @end
 
 @interface SeaScene : NSObject
+- (void)autoSinkEnemyFleet;
 @end
 
 @interface SeaShip : SKScene
 @property (nonatomic) SKSpriteNode *sprite; 
+@property (nonatomic, retain) NSArray *cells;
+@property (nonatomic) CGPoint pos;
+@end
+
+@interface BitesScene : SKScene
+@property (nonatomic, retain) NSArray *words;
+@property (nonatomic, retain) UIButton *bites_revealButton;
+@property (nonatomic, retain) UIButton *bites_autoButton;
+- (void)revealAllWordsInSheet;
+- (void)winGame;
+@end
+
+@interface ConnectScene : SKScene
+- (void)updateMinimaxOverlay;
+@end
+
+@interface FourScene : SKScene
+- (void)updateMinimaxOverlay;
+@end
+
+@interface MancalaScene : SKScene
+- (void)updateMancalaOverlay;
+@end
+
+@interface DotsScene : SKScene
+- (void)updateDotsOverlay;
+@end
+
+@interface GomokuScene : SKScene
+- (void)updateGomokuOverlay;
 @end
 
 @interface AnagramsScene : SKScene
@@ -69,6 +103,7 @@
 - (void)enterWord;
 - (void)thingAt:(NSArray *)words wordsArr:(NSMutableArray *)wordsArr blocks:(NSMutableArray *)blocks fromIndex:(int)index;
 - (void)revealWords:(bool)arg1;
+- (void)revealAllWordsInSheet;
 - (void)winGame;
 @end
 
@@ -78,6 +113,8 @@
 @property (nonatomic, retain) NSArray *words;
 @property (nonatomic, retain) UIButton *hunt_revealWordsButton;
 - (void)revealWords:(BOOL)reveal;
+- (void)revealAllWordsInSheet;
+- (void)winGame;
 - (bool)checkWord:(NSString *)word flag:(bool)flag;
 @end
 
@@ -99,6 +136,7 @@
 @interface BasketScene : SKScene
 @property (nonatomic, retain) UIButton *autoBasketButton;
 - (void)throwBallWithVelocity:(CGPoint)vel;
+- (void)autoThrowBasket;
 @end
 
 @interface TanksScene : SKScene

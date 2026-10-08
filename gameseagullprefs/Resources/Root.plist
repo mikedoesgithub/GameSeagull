@@ -22,6 +22,33 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
+			<string>Universal Controls</string>
+			<key>footerText</key>
+			<string>Displays a draggable floating 🕊️ HUD inside all GamePigeon games to toggle cheats and run solvers without leaving iMessage.</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>defaults</key>
+			<string>com.fiore.gameseagull.prefs</string>
+			<key>key</key>
+			<string>kFloatingHUD</string>
+			<key>default</key>
+			<true/>
+			<key>label</key>
+			<string>In-Game Floating Seagull HUD</string>
+			<key>iconImageSystem</key>
+			<dict>
+				<key>name</key>
+				<string>sparkles.rectangle.stack.fill</string>
+			</dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
 			<string>Archery</string>
 		</dict>
 		<dict>
@@ -495,6 +522,23 @@
 		</dict>
 		<dict>
 			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>defaults</key>
+			<string>com.fiore.gameseagull.prefs</string>
+			<key>key</key>
+			<string>kBitesAutoSolve</string>
+			<key>label</key>
+			<string>Word Bites Auto-Solve</string>
+			<key>iconImageSystem</key>
+			<dict>
+				<key>name</key>
+				<string>text.badge.checkmark</string>
+			</dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+		</dict>
+		<dict>
+			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
 			<string>Sea Battle</string>
@@ -513,6 +557,97 @@
 				<key>name</key>
 				<string>eye</string>
 			</dict>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>defaults</key>
+			<string>com.fiore.gameseagull.prefs</string>
+			<key>key</key>
+			<string>kSeaAutoSink</string>
+			<key>label</key>
+			<string>Auto-Sink Enemy Fleet *</string>
+			<key>iconImageSystem</key>
+			<dict>
+				<key>name</key>
+				<string>flame.fill</string>
+			</dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>Board Game AI Solvers</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>defaults</key>
+			<string>com.fiore.gameseagull.prefs</string>
+			<key>key</key>
+			<string>kConnect4Overlay</string>
+			<key>label</key>
+			<string>Connect 4 Minimax Guide (👑/💀/•)</string>
+			<key>iconImageSystem</key>
+			<dict>
+				<key>name</key>
+				<string>circle.grid.3x3.fill</string>
+			</dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>defaults</key>
+			<string>com.fiore.gameseagull.prefs</string>
+			<key>key</key>
+			<string>kMancalaOverlay</string>
+			<key>label</key>
+			<string>Mancala Kalah Free Turn Guide (⭐/🎯)</string>
+			<key>iconImageSystem</key>
+			<dict>
+				<key>name</key>
+				<string>star.circle.fill</string>
+			</dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>defaults</key>
+			<string>com.fiore.gameseagull.prefs</string>
+			<key>key</key>
+			<string>kDotsOverlay</string>
+			<key>label</key>
+			<string>Dots &amp; Boxes Safe Lines (🟢/🔵/🔴)</string>
+			<key>iconImageSystem</key>
+			<dict>
+				<key>name</key>
+				<string>square.split.2x2.fill</string>
+			</dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>defaults</key>
+			<string>com.fiore.gameseagull.prefs</string>
+			<key>key</key>
+			<string>kGomokuOverlay</string>
+			<key>label</key>
+			<string>Gomoku 5-in-a-Row Threat Scanner</string>
+			<key>iconImageSystem</key>
+			<dict>
+				<key>name</key>
+				<string>target</string>
+			</dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 		</dict>
 		<dict>
 			<key>cell</key>

@@ -30,10 +30,24 @@ bool autoEnterWords;
 bool seeEnemyShips;
 bool basketAutoSwish;
 bool basketInfiniteTimer;
+bool floatingHUD;
+bool connect4Overlay;
+bool mancalaOverlay;
+bool dotsOverlay;
+bool gomokuOverlay;
+bool bitesAutoSolve;
+bool seaAutoSink;
 
 DartsScene *sharedInstance;
 
 %hook ArcheryScene
+- (void)didMoveToView:(id)arg1 {
+	%orig;
+	if (floatingHUD) {
+		[SeagullHUD attachToView:self.view gameType:@"Archery" target:self];
+	}
+}
+
 - (void)setWind:(float)arg1 angle:(float)arg2 {
 	if (archeryDisableWind) {
 		%orig(0.0, 0.0);
@@ -337,6 +351,9 @@ static void executeBreakToOneTurnWin(SKScene *scene) {
 	if (disableHardmode) { \
 		[self setValue:@"n" forKey:@"mode"]; \
 	} \
+	if (floatingHUD) { \
+		[SeagullHUD attachToView:self.view gameType:@"8-Ball / 9-Ball Pool" target:self]; \
+	} \
 } \
 - (void)update:(double)arg1 { \
 	%orig; \
@@ -364,6 +381,31 @@ static void executeBreakToOneTurnWin(SKScene *scene) {
 	%orig; \
 	SKNode *traj = [self childNodeWithName:@"gp_full_pool_traj"]; \
 	if (traj) traj.hidden = YES; \
+} \
+%new \
+- (void)autoAimBestBall { \
+	NSArray *balls = nil; \
+	@try { balls = [self valueForKey:@"balls"]; } @catch (id ex) {} \
+	NSArray *pockets = nil; \
+	@try { pockets = [self valueForKey:@"pockets"]; } @catch (id ex) {} \
+	SKNode *cueBall = nil; \
+	for (SKNode *b in balls) { \
+		if ([b respondsToSelector:@selector(isStripes)] && [b respondsToSelector:@selector(isSolid)]) { \
+			if (![b performSelector:@selector(isStripes)] && ![b performSelector:@selector(isSolid)]) { \
+				cueBall = b; \
+				break; \
+			} \
+		} \
+	} \
+	if (!cueBall && balls.count > 0) cueBall = balls[0]; \
+	if (!cueBall || !balls || !pockets) return; \
+	CGFloat bestAngle = calculateBestPoolShotAngle(cueBall.position, balls, pockets, 15.0f); \
+	@try { \
+		[self setValue:@(bestAngle) forKey:@"angle"]; \
+	} @catch (id ex) {} \
+	if (poolFullTrajectory) { \
+		updateFullPoolTrajectory(self); \
+	} \
 } \
 %end
 
@@ -405,6 +447,10 @@ IMPLEMENT_POOL_SCENE(PoolScene3)
 
 - (void)didMoveToView:(id)arg1 {
 	%orig;
+
+	if (floatingHUD) {
+		[SeagullHUD attachToView:self.view gameType:@"Darts" target:self];
+	}
 
 	if (!dartAimbot) return;
 
@@ -779,6 +825,10 @@ static void executeGolfAutoPuttStealth(SKScene *scene) {
 - (void)didMoveToView:(id)arg1 {
 	%orig;
 
+	if (floatingHUD) {
+		[SeagullHUD attachToView:self.view gameType:@"Mini Golf" target:self];
+	}
+
 	if (golfAutoPuttStealth) {
 		CGFloat topInset = 20.0;
 		if (@available(iOS 11.0, *)) {
@@ -818,6 +868,10 @@ static void executeGolfAutoPuttStealth(SKScene *scene) {
 
 - (void)didMoveToView:(id)arg1 {
 	%orig;
+
+	if (floatingHUD) {
+		[SeagullHUD attachToView:self.view gameType:@"Cup Pong" target:self.scene3d];
+	}
 
 	if (!autoCupPong) return;
 
@@ -867,14 +921,20 @@ static BeerView *gCurrentBeerView = nil;
 
 	if ([cups count] < 1 || !ball) return;
 
+	NSMutableArray *liveCups = [NSMutableArray array];
+	for (BeerCup *c in cups) {
+		if (c.live) [liveCups addObject:c];
+	}
+	if (liveCups.count == 0) return;
+
 	SCNVector3 realBallPos = [self projectPoint:ball.position];
 	CGPoint start = CGPointMake(realBallPos.x, self.frame.size.height - realBallPos.y);
 	[self touchDownAtPoint:start];
 	
-	cup = cups[arc4random_uniform(cups.count)];
+	cup = liveCups[arc4random_uniform((uint32_t)liveCups.count)];
 	
-	self.F_x = (cup.pos.x - ball.position.x) * 1.3;					// yoinked from birdpoop
-	self.F_z = -1.2 / (cup.pos.z - ball.position.z + 0.25) - 2.91;	// this too
+	self.F_x = (cup.pos.x - ball.position.x) * 1.3;
+	self.F_z = -1.2 / (cup.pos.z - ball.position.z + 0.25) - 2.91;
 
 	gCurrentBeerView = self;
 
@@ -891,11 +951,34 @@ static BeerView *gCurrentBeerView = nil;
 %end
 
 %hook SeaScene
+- (void)didMoveToView:(id)arg1 {
+	%orig;
+	UIView *pv = nil;
+	@try { pv = [self valueForKey:@"view"]; } @catch (id ex) {}
+	if (pv && floatingHUD) {
+		[SeagullHUD attachToView:pv gameType:@"Sea Battle" target:self];
+	}
+}
+
 - (void)update:(double)arg1 {
 	%orig;
 	if (seeEnemyShips) {
 		for (SeaShip *ship in [self valueForKey:@"ships"]) {
 			ship.sprite.hidden = false;
+		}
+	}
+}
+
+%new
+- (void)autoSinkEnemyFleet {
+	NSArray *ships = nil;
+	@try { ships = [self valueForKey:@"ships"]; } @catch (id ex) {}
+	if (!ships) return;
+	for (SeaShip *ship in ships) {
+		ship.sprite.hidden = false;
+		CGPoint pt = ship.sprite.position;
+		if ([self respondsToSelector:@selector(touchDownAtPoint:)]) {
+			[self performSelector:@selector(touchDownAtPoint:) withObject:[NSValue valueWithCGPoint:pt]];
 		}
 	}
 }
@@ -909,12 +992,16 @@ static BeerView *gCurrentBeerView = nil;
 - (void)startGame {
 	%orig;
 
+	if (floatingHUD) {
+		[SeagullHUD attachToView:self.view gameType:@"Anagrams" target:self];
+	}
+
 	[self revealWords:YES];
 	self.words = [[[[self valueForKey:@"wordList"] valueForKey:@"words_string"] stringByReplacingOccurrencesOfString:@"?" withString:@""] componentsSeparatedByString:@"|"];
 
 	if (revealWords) {
 		CGFloat offset = autoEnterWords ? 110 : 50;
-		self.anagrams_revealButton = makeButton(@"Reveal Words", CGRectMake([UIScreen mainScreen].bounds.size.width / 2 - offset, 10, 100, 40), self, @selector(anagramsShow));
+		self.anagrams_revealButton = makeButton(@"Reveal Words", CGRectMake([UIScreen mainScreen].bounds.size.width / 2 - offset, 10, 100, 40), self, @selector(revealAllWordsInSheet));
 		[self.view addSubview:self.anagrams_revealButton];
 		[self.view bringSubviewToFront:self.anagrams_revealButton];
 	}
@@ -925,7 +1012,6 @@ static BeerView *gCurrentBeerView = nil;
 		[self.view addSubview:self.anagrams_autoButton];
 		[self.view bringSubviewToFront:self.anagrams_autoButton];
 	}
-	
 }
 
 - (void)toResult {
@@ -973,8 +1059,13 @@ static BeerView *gCurrentBeerView = nil;
 }
 
 %new
+- (void)revealAllWordsInSheet {
+	showWordList(self.view, @"Anagrams", self.words ?: @[]);
+}
+
+%new
 - (void)anagramsShow {
-	showWordList(self.view, @"Anagrams", self.words);
+	[self revealAllWordsInSheet];
 }
 %end
 
@@ -982,6 +1073,10 @@ static BeerView *gCurrentBeerView = nil;
 %property (nonatomic, retain) UIButton *hunt_revealWordsButton;
 - (void)startGame {
 	%orig;
+
+	if (floatingHUD) {
+		[SeagullHUD attachToView:self.view gameType:@"Word Hunt" target:self];
+	}
 
 	if (revealWords) {
 		CGFloat pos = ((SKSpriteNode*)[self valueForKey:@"score_bg"]).size.height + self.view.safeAreaInsets.top;
@@ -1009,6 +1104,269 @@ static BeerView *gCurrentBeerView = nil;
 
 	showWordList(self.view, @"Word Hunt", validWords);
 }
+
+%new
+- (void)revealAllWordsInSheet {
+	[self hunt_revealWords];
+}
+
+%new
+- (void)winGame {
+	NSArray *words = [[[[self valueForKey:@"wordList"] valueForKey:@"words_string"] stringByReplacingOccurrencesOfString:@"?" withString:@""] componentsSeparatedByString:@"|"];
+	for (NSString *word in words) {
+		if ([self checkWord:word flag:0]) {
+			// Solved
+		}
+	}
+}
+%end
+
+%hook BitesScene
+%property (nonatomic, retain) NSArray *words;
+%property (nonatomic, retain) UIButton *bites_revealButton;
+%property (nonatomic, retain) UIButton *bites_autoButton;
+
+- (void)didMoveToView:(id)arg1 {
+	%orig;
+	if (floatingHUD) {
+		[SeagullHUD attachToView:self.view gameType:@"Word Bites" target:self];
+	}
+
+	if (revealWords) {
+		CGFloat topInset = 20.0;
+		if (@available(iOS 11.0, *)) {
+			topInset = self.view.safeAreaInsets.top + 10.0;
+		}
+		self.bites_revealButton = makeButton(@"Words", CGRectMake([UIScreen mainScreen].bounds.size.width - 90, topInset, 75, 36), self, @selector(revealAllWordsInSheet));
+		[self.view addSubview:self.bites_revealButton];
+		[self.view bringSubviewToFront:self.bites_revealButton];
+
+		self.bites_autoButton = makeButton(@"Auto", CGRectMake([UIScreen mainScreen].bounds.size.width - 170, topInset, 75, 36), self, @selector(winGame));
+		[self.view addSubview:self.bites_autoButton];
+		[self.view bringSubviewToFront:self.bites_autoButton];
+	}
+}
+
+- (void)startGame {
+	%orig;
+	@try {
+		self.words = [[[[self valueForKey:@"wordList"] valueForKey:@"words_string"] stringByReplacingOccurrencesOfString:@"?" withString:@""] componentsSeparatedByString:@"|"];
+	} @catch (id ex) {}
+}
+
+%new
+- (void)revealAllWordsInSheet {
+	if (!self.words) {
+		@try {
+			self.words = [[[[self valueForKey:@"wordList"] valueForKey:@"words_string"] stringByReplacingOccurrencesOfString:@"?" withString:@""] componentsSeparatedByString:@"|"];
+		} @catch (id ex) {}
+	}
+	showWordList(self.view, @"Word Bites", self.words ?: @[]);
+}
+
+%new
+- (void)winGame {
+	if (!self.words || self.words.count == 0) {
+		@try {
+			self.words = [[[[self valueForKey:@"wordList"] valueForKey:@"words_string"] stringByReplacingOccurrencesOfString:@"?" withString:@""] componentsSeparatedByString:@"|"];
+		} @catch (id ex) {}
+	}
+	if (!self.words) return;
+	for (NSString *w in self.words) {
+		if ([self respondsToSelector:@selector(checkWord:flag:)]) {
+			[self performSelector:@selector(checkWord:flag:) withObject:w withObject:@(YES)];
+		}
+	}
+}
+%end
+
+#define IMPLEMENT_CONNECT_SCENE(SceneClass) \
+%hook SceneClass \
+- (void)didMoveToView:(id)arg1 { \
+	%orig; \
+	if (floatingHUD) { \
+		[SeagullHUD attachToView:self.view gameType:@"Connect 4" target:self]; \
+	} \
+} \
+- (void)update:(double)arg1 { \
+	%orig; \
+	if (!connect4Overlay) return; \
+	[self updateMinimaxOverlay]; \
+} \
+%new \
+- (void)updateMinimaxOverlay { \
+	NSArray *gridArr = nil; \
+	@try { gridArr = [self valueForKey:@"grid"]; } @catch (id ex) {} \
+	int grid[6][7] = {0}; \
+	if (gridArr && gridArr.count >= 6) { \
+		for (int r = 0; r < 6; r++) { \
+			NSArray *row = gridArr[r]; \
+			for (int c = 0; c < 7 && c < (int)row.count; c++) { \
+				grid[r][c] = [row[c] intValue]; \
+			} \
+		} \
+	} \
+	Connect4Evaluation eval = evaluateConnect4Grid(grid, 1); \
+	for (int c = 0; c < 7; c++) { \
+		NSString *nodeName = [NSString stringWithFormat:@"c4_ind_%d", c]; \
+		SKLabelNode *lbl = (SKLabelNode *)[self childNodeWithName:nodeName]; \
+		if (!lbl) { \
+			lbl = [SKLabelNode labelNodeWithFontNamed:@"Helvetica-Bold"]; \
+			lbl.name = nodeName; \
+			lbl.fontSize = 18.0; \
+			lbl.zPosition = 999; \
+			[self addChild:lbl]; \
+		} \
+		CGFloat colW = self.size.width / 7.0; \
+		lbl.position = CGPointMake(colW * c + colW * 0.5, self.size.height - 40.0); \
+		if (c == eval.bestColumn) { \
+			lbl.text = @"👑"; \
+			lbl.fontColor = [UIColor greenColor]; \
+		} else if (eval.columnScores[c] == -10000) { \
+			lbl.text = @"💀"; \
+			lbl.fontColor = [UIColor redColor]; \
+		} else { \
+			lbl.text = @"•"; \
+			lbl.fontColor = [UIColor yellowColor]; \
+		} \
+	} \
+} \
+%end
+
+IMPLEMENT_CONNECT_SCENE(ConnectScene)
+IMPLEMENT_CONNECT_SCENE(FourScene)
+
+%hook MancalaScene
+- (void)didMoveToView:(id)arg1 {
+	%orig;
+	if (floatingHUD) {
+		[SeagullHUD attachToView:self.view gameType:@"Mancala" target:self];
+	}
+}
+- (void)update:(double)arg1 {
+	%orig;
+	if (!mancalaOverlay) return;
+	[self updateMancalaOverlay];
+}
+%new
+- (void)updateMancalaOverlay {
+	NSArray *pitsArr = nil;
+	@try { pitsArr = [self valueForKey:@"pits"]; } @catch (id ex) {}
+	if (!pitsArr || pitsArr.count < 14) return;
+
+	int board[14] = {0};
+	for (int i = 0; i < 14; i++) {
+		id p = pitsArr[i];
+		board[i] = [p respondsToSelector:@selector(count)] ? (int)[p count] : [p intValue];
+	}
+
+	for (int i = 0; i < 6; i++) {
+		MancalaPitEvaluation eval = evaluateMancalaPit(board, i, 1);
+		NSString *badgeName = [NSString stringWithFormat:@"mancala_badge_%d", i];
+		SKLabelNode *badge = (SKLabelNode *)[self childNodeWithName:badgeName];
+		if (!badge) {
+			badge = [SKLabelNode labelNodeWithFontNamed:@"Helvetica-Bold"];
+			badge.name = badgeName;
+			badge.fontSize = 13.0;
+			badge.zPosition = 999;
+			[self addChild:badge];
+		}
+		SKNode *pitNode = pitsArr[i];
+		badge.position = CGPointMake(pitNode.position.x, pitNode.position.y + 35.0);
+
+		if (eval.isFreeTurn) {
+			badge.text = @"⭐ Turn";
+			badge.fontColor = [UIColor colorWithRed:1.0 green:0.85 blue:0.1 alpha:1.0];
+		} else if (eval.isCapture) {
+			badge.text = [NSString stringWithFormat:@"🎯 +%d", eval.seedsCaptured];
+			badge.fontColor = [UIColor colorWithRed:0.2 green:0.95 blue:0.3 alpha:1.0];
+		} else {
+			badge.text = @"";
+		}
+	}
+}
+%end
+
+%hook DotsScene
+- (void)didMoveToView:(id)arg1 {
+	%orig;
+	if (floatingHUD) {
+		[SeagullHUD attachToView:self.view gameType:@"Dots & Boxes" target:self];
+	}
+}
+- (void)update:(double)arg1 {
+	%orig;
+	if (!dotsOverlay) return;
+	[self updateDotsOverlay];
+}
+%new
+- (void)updateDotsOverlay {
+	NSArray *lines = nil;
+	@try { lines = [self valueForKey:@"lines"]; } @catch (id ex) {}
+	if (!lines) return;
+
+	for (SKNode *lineNode in lines) {
+		if (![lineNode respondsToSelector:@selector(hidden)] || lineNode.hidden == NO) continue;
+		int boxA = 0, boxB = 0;
+		@try {
+			boxA = [[lineNode valueForKey:@"boxA_count"] intValue];
+			boxB = [[lineNode valueForKey:@"boxB_count"] intValue];
+		} @catch (id ex) {}
+
+		DotsLineQuality q = evaluateDotsLineQuality(boxA, boxB);
+		if ([lineNode isKindOfClass:[SKShapeNode class]]) {
+			SKShapeNode *shape = (SKShapeNode *)lineNode;
+			if (q == DOTS_MOVE_CAPTURE || q == DOTS_MOVE_DOUBLE) {
+				shape.strokeColor = [UIColor colorWithRed:0.1 green:0.95 blue:0.2 alpha:1.0];
+			} else if (q == DOTS_MOVE_DANGER) {
+				shape.strokeColor = [UIColor colorWithRed:1.0 green:0.2 blue:0.2 alpha:1.0];
+			} else {
+				shape.strokeColor = [UIColor colorWithRed:0.2 green:0.7 blue:1.0 alpha:0.8];
+			}
+		}
+	}
+}
+%end
+
+%hook GomokuScene
+- (void)didMoveToView:(id)arg1 {
+	%orig;
+	if (floatingHUD) {
+		[SeagullHUD attachToView:self.view gameType:@"Gomoku" target:self];
+	}
+}
+- (void)update:(double)arg1 {
+	%orig;
+	if (!gomokuOverlay) return;
+	[self updateGomokuOverlay];
+}
+%new
+- (void)updateGomokuOverlay {
+	NSArray *gridArr = nil;
+	@try { gridArr = [self valueForKey:@"board"]; } @catch (id ex) {}
+	int grid[15][15] = {0};
+	if (gridArr && gridArr.count >= 15) {
+		for (int r = 0; r < 15; r++) {
+			NSArray *row = gridArr[r];
+			for (int c = 0; c < 15 && c < (int)row.count; c++) {
+				grid[r][c] = [row[c] intValue];
+			}
+		}
+	}
+	GomokuMove move = evaluateGomokuGrid(grid, 1);
+	SKNode *guide = [self childNodeWithName:@"gomoku_guide"];
+	if (!guide) {
+		SKShapeNode *circle = [SKShapeNode shapeNodeWithCircleOfRadius:12.0];
+		circle.name = @"gomoku_guide";
+		circle.strokeColor = [UIColor colorWithRed:0.1 green:0.95 blue:0.3 alpha:1.0];
+		circle.lineWidth = 2.5;
+		circle.zPosition = 999;
+		[self addChild:circle];
+		guide = circle;
+	}
+	CGFloat cellW = self.size.width / 15.0;
+	guide.position = CGPointMake(cellW * move.bestCol + cellW * 0.5, cellW * move.bestRow + cellW * 0.5);
+}
 %end
 
 %hook BasketScene
@@ -1016,6 +1374,10 @@ static BeerView *gCurrentBeerView = nil;
 
 - (void)didMoveToView:(id)arg1 {
 	%orig;
+
+	if (floatingHUD) {
+		[SeagullHUD attachToView:self.view gameType:@"Basketball" target:self];
+	}
 
 	if (basketAutoSwish) {
 		CGFloat topInset = 20.0;
@@ -1053,9 +1415,21 @@ static BeerView *gCurrentBeerView = nil;
 		[self performSelector:@selector(touchUpAtPoint:) withObject:[NSValue valueWithCGPoint:hoopPos]];
 	}
 }
+
+%new
+- (void)autoThrowBasket {
+	[self gp_autoSwishShoot];
+}
 %end
 
 %hook TanksScene
+- (void)didMoveToView:(id)arg1 {
+	%orig;
+	if (floatingHUD) {
+		[SeagullHUD attachToView:self.view gameType:@"Tanks" target:self];
+	}
+}
+
 - (void)update:(double)arg1 {
 	%orig;
 	if (tanksTrajectory) {
@@ -1104,6 +1478,13 @@ static void loadPrefs(void) {
 	seeEnemyShips = boolForKey(@"kSeeEnemies");
 	basketAutoSwish = boolForKey(@"kBasketAutoSwish");
 	basketInfiniteTimer = boolForKey(@"kBasketInfiniteTimer");
+	floatingHUD = getPreferences()[@"kFloatingHUD"] ? boolForKey(@"kFloatingHUD") : true;
+	connect4Overlay = boolForKey(@"kConnect4Overlay");
+	mancalaOverlay = boolForKey(@"kMancalaOverlay");
+	dotsOverlay = boolForKey(@"kDotsOverlay");
+	gomokuOverlay = boolForKey(@"kGomokuOverlay");
+	bitesAutoSolve = boolForKey(@"kBitesAutoSolve");
+	seaAutoSink = boolForKey(@"kSeaAutoSink");
 }
 
 static void prefsNotificationCallback(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
