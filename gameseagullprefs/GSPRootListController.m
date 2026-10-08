@@ -33,15 +33,14 @@
 	return self;
 }
 
-extern char **environ;
 + (void)apply {
-	const char *args[] = {
-		[ROOT_PATH_NS(@"/usr/bin/killall") UTF8String],
-		"MobileSMS",
-		NULL
-	};
-	pid_t pid = -1;
-	posix_spawn(&pid, args[0], NULL, NULL, (char *const *)args, environ);
+	CFNotificationCenterPostNotification(
+		CFNotificationCenterGetDarwinNotifyCenter(),
+		CFSTR("com.fiore.gameseagull.prefs/ReloadPrefs"),
+		NULL,
+		NULL,
+		YES
+	);
 }
 
 @end

@@ -1,0 +1,40 @@
+name: Build GameSeagull
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Theos & iOS SDK
+        run: |
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          curl -sSL "https://github.com/theos/sdks/releases/download/latest/iPhoneOS16.5.sdk.tar.xz" | tar -xJ -C $HOME/theos/sdks/
+          git clone --depth=1 https://github.com/hbang/libcephei.git /tmp/cephei
+          mkdir -p $HOME/theos/include
+          cp -r /tmp/cephei/headers/* $HOME/theos/include/ 2>/dev/null || true
+
+      - name: Build Tweak Packages (.deb)
+        run: |
+          chmod +x ./build_release.sh
+          ./build_release.sh
+
+      - name: Upload Built Deb Packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: GameSeagull-Packages
+          path: |
+            build/*.deb
+            packages/*.deb

@@ -1,0 +1,32 @@
+workflows:
+  build-gameseagull:
+    name: Build GameSeagull Tweak
+    max_build_duration: 30
+    instance_type: mac_mini_m2
+    environment:
+      vars:
+        THEOS: /Users/builder/theos
+    scripts:
+      - name: Setup Theos & iOS SDK
+        script: |
+          set -e
+          echo "==> Cloning Theos"
+          git clone --recursive https://github.com/theos/theos.git $THEOS
+
+          echo "==> Fetching iOS 16.5 SDK"
+          curl -sSL "https://github.com/theos/sdks/releases/download/latest/iPhoneOS16.5.sdk.tar.xz" | tar -xJ -C $THEOS/sdks/
+
+          echo "==> Setting up Cephei Headers"
+          git clone --depth=1 https://github.com/hbang/libcephei.git /tmp/cephei
+          mkdir -p $THEOS/include
+          cp -r /tmp/cephei/headers/* $THEOS/include/ 2>/dev/null || true
+
+      - name: Build Rootful & Rootless Debs
+        script: |
+          set -e
+          chmod +x ./build_release.sh
+          ./build_release.sh
+
+    artifacts:
+      - build/*.deb
+      - packages/*.deb

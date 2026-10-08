@@ -5,14 +5,44 @@ Get it on my [repo](https://donato-fiore.github.io/repo)
 If you would like to support me, consider donating [here](http://paypal.me/donatofiore)!
 
 # Building & Installation
+
+### Local Build (macOS or Linux with Theos)
 ```SHELL
 git clone https://github.com/donato-fiore/GameSeagull.git
 cd GameSeagull
 ./build_release.sh
 ```
 
+### Cloud CI Builds (No local Mac required)
+* **Codemagic**: Included `codemagic.yaml` builds rootful and rootless packages on macOS runners with artifacts uploaded automatically.
+* **GitHub Actions**: Push or trigger the included `.github/workflows/build.yml` workflow on any GitHub repo to get compiled `.deb` artifacts directly from GitHub Actions.
+
 # Changelog
-## [2.1](https://github.com/donato-fiore/GameSeagull/releases/tag/2.1) - 2024-02-01
+## [3.0] - Enhanced Edition
+### Critical Fixes:
+- Guarded memory patching against null-pointer crashes on offset misses.
+- Eliminated infinite recursion hook bug in Cup Pong.
+- Fixed collection mutation crash during fast enumeration in Word Hunt.
+- Resolved repeated letter tile selection bug in Anagrams.
+- Fixed Darts aimbot menu selection check typo and out-of-bounds array hazards.
+
+### Architecture:
+- Implemented real-time dynamic Darwin notification preference reloading (`com.fiore.gameseagull.prefs/ReloadPrefs`) — no more killing `MobileSMS`!
+- Replaced unreadable `UIAlertController` word modals with modern iOS 15+ draggable bottom sheets with "Copy All".
+- Deduplicated `PoolScene`, `PoolScene2`, and `PoolScene3` hooks using unified macro.
+
+### New Features:
+- **Pool (8-Ball & 9-Ball)**:
+  - **Full Multi-Ball Trajectory**: Real-time 2D raycasting engine predicting cue ball path, cushion reflections, ghost ball impact, primary object ball paths, and secondary ball-to-ball collisions!
+  - **Break to Win in One Turn**: Perfectly distributes impulses across the rack on the break shot so balls scatter and drain into all 6 pockets, sinking the rack and 8-ball/9-ball in one turn.
+- **Mini Golf**:
+  - **Full Trajectory / Bounce Map**: Forward-simulates ball path across 160 steps with surface friction and boundary/obstacle rebounds, indicating hole intersections.
+  - **Stealth Auto-Shoot Hole-in-One**: Scans launch vectors to calculate trick shots that bounce off walls and sink into the cup, synthesizing realistic touch gestures.
+  - **Legit Mode**: Lets the ball sink smoothly on stroke 2+ to look completely natural.
+- **Basketball**:
+  - Added Auto Swish button and freeze shot clock timer hack.
+- **Tanks**:
+  - Added persistent ballistic trajectory guide.
 ### Updates:
 - Fixed some icons not showing on < iOS 16
 - Added:

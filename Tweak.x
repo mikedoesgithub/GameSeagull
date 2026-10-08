@@ -12,15 +12,24 @@ bool disableHardmode;
 bool alwaysShowLines;
 bool rgbLine;
 bool alwaysMoveCueBall;
+bool poolBankShots;
+bool poolFullTrajectory;
+bool poolBreakToOneTurnWin;
 bool oneDartWin;
 bool dartAimbot;
 bool tanksDisableWind;
+bool tanksTrajectory;
 bool alwaysHoleInOne;
+bool golfLegitMode;
+bool golfTrajectoryMap;
+bool golfAutoPuttStealth;
 bool oneCupWin;
 bool autoCupPong;
 bool revealWords;
 bool autoEnterWords;
 bool seeEnemyShips;
+bool basketAutoSwish;
+bool basketInfiniteTimer;
 
 DartsScene *sharedInstance;
 
@@ -60,78 +69,307 @@ DartsScene *sharedInstance;
 }
 %end
 
-%hook PoolScene
-%property (nonatomic) int currentColorHue;
-- (void)didMoveToView:(id)arg1 {
-	%orig;
-	if (disableHardmode) {
-		[self setValue:@"n" forKey:@"mode"];
+static CGPoint normalizeVec(CGPoint v) {
+	CGFloat len = hypot(v.x, v.y);
+	if (len < 0.0001f) return CGPointMake(1.0f, 0.0f);
+	return CGPointMake(v.x / len, v.y / len);
+}
+
+static CGFloat dotProduct(CGPoint a, CGPoint b) {
+	return a.x * b.x + a.y * b.y;
+}
+
+static void updateFullPoolTrajectory(SKScene *scene) {
+	if (!poolFullTrajectory) return;
+
+	NSArray *balls = nil;
+	@try { balls = [scene valueForKey:@"balls"]; } @catch (id ex) {}
+	if (!balls || balls.count == 0) return;
+
+	NSArray *pockets = nil;
+	@try { pockets = [scene valueForKey:@"pockets"]; } @catch (id ex) {}
+
+	SKNode *cueBall = nil;
+	for (SKNode *b in balls) {
+		if ([b respondsToSelector:@selector(isStripes)] && [b respondsToSelector:@selector(isSolid)]) {
+			if (![b performSelector:@selector(isStripes)] && ![b performSelector:@selector(isSolid)]) {
+				cueBall = b;
+				break;
+			}
+		}
+	}
+	if (!cueBall && balls.count > 0) cueBall = balls[0];
+	if (!cueBall) return;
+
+	SKShapeNode *canvas = nil;
+	@try { canvas = [scene valueForKey:@"canvas"]; } @catch (id ex) {}
+	if (!canvas || !canvas.path) return;
+
+	__block CGPoint firstPt = cueBall.position;
+	__block CGPoint lastPt = cueBall.position;
+	__block int ptCount = 0;
+	CGPathApplyWithBlock(canvas.path, ^(const CGPathElement *element) {
+		if (element->type == kCGPathElementMoveToPoint) {
+			firstPt = element->points[0];
+		} else if (element->type == kCGPathElementAddLineToPoint) {
+			lastPt = element->points[0];
+			ptCount++;
+		}
+	});
+
+	CGPoint shotDir = CGPointMake(lastPt.x - firstPt.x, lastPt.y - firstPt.y);
+	if (hypot(shotDir.x, shotDir.y) < 2.0f) {
+		id angleVal = nil;
+		@try { angleVal = [scene valueForKey:@"angle"]; } @catch (id ex) {}
+		if (angleVal) {
+			float theta = [angleVal floatValue];
+			shotDir = CGPointMake(cosf(theta), sinf(theta));
+		} else {
+			return;
+		}
+	}
+	CGPoint cueDir = normalizeVec(shotDir);
+
+	CGFloat minX = 40.0f, maxX = scene.size.width - 40.0f;
+	CGFloat minY = 40.0f, maxY = scene.size.height - 40.0f;
+	if (pockets && pockets.count >= 4) {
+		minX = 1e9; maxX = -1e9; minY = 1e9; maxY = -1e9;
+		for (SKNode *pocket in pockets) {
+			if (pocket.position.x < minX) minX = pocket.position.x;
+			if (pocket.position.x > maxX) maxX = pocket.position.x;
+			if (pocket.position.y < minY) minY = pocket.position.y;
+			if (pocket.position.y > maxY) maxY = pocket.position.y;
+		}
+	}
+	CGFloat R_ball = 15.0f;
+	CGFloat cushionLeft = minX + R_ball;
+	CGFloat cushionRight = maxX - R_ball;
+	CGFloat cushionBottom = minY + R_ball;
+	CGFloat cushionTop = maxY - R_ball;
+
+	CGMutablePathRef fullPath = CGPathCreateMutable();
+	CGPoint currentCuePos = cueBall.position;
+	CGPathMoveToPoint(fullPath, NULL, currentCuePos.x, currentCuePos.y);
+
+	int hitBallIndex = -1;
+	CGPoint ballHitPos = CGPointZero;
+	CGPoint ballHitNormal = CGPointZero;
+
+	for (int bounce = 0; bounce < 3; bounce++) {
+		CGFloat tCushion = 1e9;
+		int cushionSide = 0;
+		if (cueDir.x > 0.0001f) {
+			CGFloat t = (cushionRight - currentCuePos.x) / cueDir.x;
+			if (t > 0 && t < tCushion) { tCushion = t; cushionSide = 2; }
+		} else if (cueDir.x < -0.0001f) {
+			CGFloat t = (cushionLeft - currentCuePos.x) / cueDir.x;
+			if (t > 0 && t < tCushion) { tCushion = t; cushionSide = 1; }
+		}
+		if (cueDir.y > 0.0001f) {
+			CGFloat t = (cushionTop - currentCuePos.y) / cueDir.y;
+			if (t > 0 && t < tCushion) { tCushion = t; cushionSide = 4; }
+		} else if (cueDir.y < -0.0001f) {
+			CGFloat t = (cushionBottom - currentCuePos.y) / cueDir.y;
+			if (t > 0 && t < tCushion) { tCushion = t; cushionSide = 3; }
+		}
+
+		CGFloat tBall = 1e9;
+		int closestBallIdx = -1;
+		for (int i = 0; i < (int)balls.count; i++) {
+			SKNode *b = balls[i];
+			if (b == cueBall) continue;
+			CGPoint bPos = b.position;
+			CGPoint toBall = CGPointMake(bPos.x - currentCuePos.x, bPos.y - currentCuePos.y);
+			CGFloat proj = dotProduct(toBall, cueDir);
+			if (proj <= 0) continue;
+			CGFloat perpSq = (toBall.x * toBall.x + toBall.y * toBall.y) - (proj * proj);
+			CGFloat diam = 2.0f * R_ball;
+			if (perpSq <= (diam * diam)) {
+				CGFloat t = proj - sqrtf(fmaxf(0.0f, (diam * diam) - perpSq));
+				if (t > 0.1f && t < tBall) {
+					tBall = t;
+					closestBallIdx = i;
+				}
+			}
+		}
+
+		if (closestBallIdx >= 0 && tBall < tCushion) {
+			hitBallIndex = closestBallIdx;
+			ballHitPos = CGPointMake(currentCuePos.x + cueDir.x * tBall, currentCuePos.y + cueDir.y * tBall);
+			CGPathAddLineToPoint(fullPath, NULL, ballHitPos.x, ballHitPos.y);
+			CGPathAddArc(fullPath, NULL, ballHitPos.x, ballHitPos.y, R_ball, 0, M_PI * 2, YES);
+
+			SKNode *targetBall = balls[closestBallIdx];
+			ballHitNormal = normalizeVec(CGPointMake(targetBall.position.x - ballHitPos.x, targetBall.position.y - ballHitPos.y));
+			break;
+		} else if (tCushion < 1e8) {
+			currentCuePos = CGPointMake(currentCuePos.x + cueDir.x * tCushion, currentCuePos.y + cueDir.y * tCushion);
+			CGPathAddLineToPoint(fullPath, NULL, currentCuePos.x, currentCuePos.y);
+			if (cushionSide == 1 || cushionSide == 2) cueDir.x = -cueDir.x;
+			if (cushionSide == 3 || cushionSide == 4) cueDir.y = -cueDir.y;
+		} else {
+			break;
+		}
+	}
+
+	if (hitBallIndex >= 0) {
+		SKNode *targetBall = balls[hitBallIndex];
+		CGPoint targetPos = targetBall.position;
+		CGPoint targetDir = ballHitNormal;
+
+		CGPoint cueDeflect = normalizeVec(CGPointMake(cueDir.x - dotProduct(cueDir, ballHitNormal) * ballHitNormal.x,
+		                                              cueDir.y - dotProduct(cueDir, ballHitNormal) * ballHitNormal.y));
+		CGPathMoveToPoint(fullPath, NULL, ballHitPos.x, ballHitPos.y);
+		CGPathAddLineToPoint(fullPath, NULL, ballHitPos.x + cueDeflect.x * 120.0f, ballHitPos.y + cueDeflect.y * 120.0f);
+
+		CGPathMoveToPoint(fullPath, NULL, targetPos.x, targetPos.y);
+
+		BOOL targetEntersPocket = NO;
+		if (pockets) {
+			for (SKNode *pocket in pockets) {
+				CGPoint toPocket = CGPointMake(pocket.position.x - targetPos.x, pocket.position.y - targetPos.y);
+				CGFloat pProj = dotProduct(toPocket, targetDir);
+				if (pProj > 0) {
+					CGFloat perpSq = (toPocket.x * toPocket.x + toPocket.y * toPocket.y) - (pProj * pProj);
+					if (perpSq <= (32.0f * 32.0f)) {
+						CGPathAddLineToPoint(fullPath, NULL, pocket.position.x, pocket.position.y);
+						CGPathAddArc(fullPath, NULL, pocket.position.x, pocket.position.y, 20.0f, 0, M_PI * 2, YES);
+						targetEntersPocket = YES;
+						break;
+					}
+				}
+			}
+		}
+
+		if (!targetEntersPocket) {
+			CGFloat tSecondary = 1e9;
+			int secBallIdx = -1;
+			for (int j = 0; j < (int)balls.count; j++) {
+				if (j == hitBallIndex) continue;
+				SKNode *b2 = balls[j];
+				if (b2 == cueBall) continue;
+				CGPoint toB2 = CGPointMake(b2.position.x - targetPos.x, b2.position.y - targetPos.y);
+				CGFloat proj = dotProduct(toB2, targetDir);
+				if (proj <= 0) continue;
+				CGFloat perpSq = (toB2.x * toB2.x + toB2.y * toB2.y) - (proj * proj);
+				CGFloat diam = 2.0f * R_ball;
+				if (perpSq <= (diam * diam)) {
+					CGFloat t = proj - sqrtf(fmaxf(0.0f, (diam * diam) - perpSq));
+					if (t > 0.1f && t < tSecondary) {
+						tSecondary = t;
+						secBallIdx = j;
+					}
+				}
+			}
+
+			if (secBallIdx >= 0 && tSecondary < 400.0f) {
+				CGPoint secHitPos = CGPointMake(targetPos.x + targetDir.x * tSecondary, targetPos.y + targetDir.y * tSecondary);
+				CGPathAddLineToPoint(fullPath, NULL, secHitPos.x, secHitPos.y);
+				CGPathAddArc(fullPath, NULL, secHitPos.x, secHitPos.y, R_ball, 0, M_PI * 2, YES);
+
+				SKNode *secBall = balls[secBallIdx];
+				CGPoint secNormal = normalizeVec(CGPointMake(secBall.position.x - secHitPos.x, secBall.position.y - secHitPos.y));
+				CGPathMoveToPoint(fullPath, NULL, secBall.position.x, secBall.position.y);
+				CGPathAddLineToPoint(fullPath, NULL, secBall.position.x + secNormal.x * 200.0f, secBall.position.y + secNormal.y * 200.0f);
+			} else {
+				CGFloat tCush = 350.0f;
+				CGPathAddLineToPoint(fullPath, NULL, targetPos.x + targetDir.x * tCush, targetPos.y + targetDir.y * tCush);
+			}
+		}
+	}
+
+	SKShapeNode *trajNode = (SKShapeNode *)[scene childNodeWithName:@"gp_full_pool_traj"];
+	if (!trajNode) {
+		trajNode = [SKShapeNode shapeNodeWithPath:fullPath];
+		trajNode.name = @"gp_full_pool_traj";
+		trajNode.zPosition = 999;
+		trajNode.lineWidth = 2.0f;
+		trajNode.strokeColor = [UIColor colorWithRed:0.0f green:0.95f blue:1.0f alpha:0.9f];
+		[scene addChild:trajNode];
+	} else {
+		trajNode.path = fullPath;
+		trajNode.hidden = NO;
+	}
+	CGPathRelease(fullPath);
+}
+
+static void executeBreakToOneTurnWin(SKScene *scene) {
+	if (!poolBreakToOneTurnWin) return;
+
+	NSArray *balls = nil;
+	@try { balls = [scene valueForKey:@"balls"]; } @catch (id ex) {}
+	if (!balls || balls.count < 6) return;
+
+	NSArray *pockets = nil;
+	@try { pockets = [scene valueForKey:@"pockets"]; } @catch (id ex) {}
+	if (!pockets || pockets.count < 6) return;
+
+	int pocketIdx = 0;
+	for (int i = 0; i < (int)balls.count; i++) {
+		SKNode *b = balls[i];
+		if ([b respondsToSelector:@selector(isStripes)] && [b respondsToSelector:@selector(isSolid)]) {
+			if (![b performSelector:@selector(isStripes)] && ![b performSelector:@selector(isSolid)]) {
+				// Cue ball: keep safely on table
+				b.physicsBody.velocity = CGVectorMake(0.0f, 0.0f);
+				continue;
+			}
+		}
+
+		SKNode *targetPocket = pockets[pocketIdx % pockets.count];
+		pocketIdx++;
+
+		CGFloat dx = targetPocket.position.x - b.position.x;
+		CGFloat dy = targetPocket.position.y - b.position.y;
+		CGFloat dist = hypot(dx, dy);
+		if (dist > 1.0f) {
+			CGFloat speed = 950.0f + (arc4random_uniform(150));
+			b.physicsBody.velocity = CGVectorMake((dx / dist) * speed, (dy / dist) * speed);
+		}
 	}
 }
 
-- (void)update:(double)arg1 {
-	%orig;
-
-	if (rgbLine) {
-		SKShapeNode *canvas = [self valueForKey:@"canvas"];
-		self.currentColorHue++;
-		if (self.currentColorHue > 360) self.currentColorHue = 0;
-		[canvas setStrokeColor:[UIColor colorWithHue:self.currentColorHue/360.0 saturation:1.0 brightness:1.0 alpha:1.0]];
-	}
-	
-	if (alwaysMoveCueBall) {
-		[self setValue:@(true) forKey:@"move_white"];
-	}
-}
+#define IMPLEMENT_POOL_SCENE(SceneClass) \
+%hook SceneClass \
+%property (nonatomic) int currentColorHue; \
+%property (nonatomic, retain) SKShapeNode *fullTrajNode; \
+- (void)didMoveToView:(id)arg1 { \
+	%orig; \
+	if (disableHardmode) { \
+		[self setValue:@"n" forKey:@"mode"]; \
+	} \
+} \
+- (void)update:(double)arg1 { \
+	%orig; \
+	if (rgbLine) { \
+		SKShapeNode *canvas = [self valueForKey:@"canvas"]; \
+		self.currentColorHue = (self.currentColorHue + 1) % 360; \
+		if (canvas) { \
+			[canvas setStrokeColor:[UIColor colorWithHue:self.currentColorHue/360.0 saturation:1.0 brightness:1.0 alpha:1.0]]; \
+		} \
+	} \
+	if (alwaysMoveCueBall) { \
+		[self setValue:@(true) forKey:@"move_white"]; \
+	} \
+} \
+- (void)mMove { \
+	%orig; \
+	if (poolFullTrajectory) { \
+		updateFullPoolTrajectory(self); \
+	} \
+} \
+- (void)mUp { \
+	if (poolBreakToOneTurnWin) { \
+		executeBreakToOneTurnWin(self); \
+	} \
+	%orig; \
+	SKNode *traj = [self childNodeWithName:@"gp_full_pool_traj"]; \
+	if (traj) traj.hidden = YES; \
+} \
 %end
 
-%hook PoolScene2
-%property (nonatomic) int currentColorHue;
-- (void)didMoveToView:(id)arg1 {
-	%orig;
-	if (disableHardmode) {
-		[self setValue:@"n" forKey:@"mode"];
-	}
-}
-
-- (void)update:(double)arg1 {
-	%orig;
-	if (rgbLine) {
-		SKShapeNode *canvas = [self valueForKey:@"canvas"];
-		self.currentColorHue++;
-		if (self.currentColorHue > 360) self.currentColorHue = 0;
-		[canvas setStrokeColor:[UIColor colorWithHue:self.currentColorHue/360.0 saturation:1.0 brightness:1.0 alpha:1.0]];
-	}
-	
-	if (alwaysMoveCueBall) {
-		[self setValue:@(true) forKey:@"move_white"];
-	}
-}
-%end
-
-%hook PoolScene3
-%property (nonatomic) int currentColorHue;
-- (void)didMoveToView:(id)arg1 {
-	%orig;
-	if (disableHardmode) {
-		[self setValue:@"n" forKey:@"mode"];
-	}
-}
-
-- (void)update:(double)arg1 {
-	%orig;
-	if (rgbLine) {
-		SKShapeNode *canvas = [self valueForKey:@"canvas"];
-		self.currentColorHue++;
-		if (self.currentColorHue > 360) self.currentColorHue = 0;
-		[canvas setStrokeColor:[UIColor colorWithHue:self.currentColorHue/360.0 saturation:1.0 brightness:1.0 alpha:1.0]];
-	}
-	
-	if (alwaysMoveCueBall) {
-		[self setValue:@(true) forKey:@"move_white"];
-	}
-}
-%end
+IMPLEMENT_POOL_SCENE(PoolScene)
+IMPLEMENT_POOL_SCENE(PoolScene2)
+IMPLEMENT_POOL_SCENE(PoolScene3)
 
 %hook TanksWind
 - (void)setWind:(float)arg1 {
@@ -265,7 +503,7 @@ DartsScene *sharedInstance;
 
 		[self createMainMenu];
 	}];
-	action50.state = self.number == 25 ? UIMenuElementStateOn : UIMenuElementStateOff;
+	action50.state = self.number == 50 ? UIMenuElementStateOn : UIMenuElementStateOff;
 	[numbers addObject:action50];
 
 	for (UIAction *action in numbers) {
@@ -379,11 +617,200 @@ DartsScene *sharedInstance;
 
 %hook GolfBall
 - (bool)inside {
-	return alwaysHoleInOne ? true : %orig;
+	if (alwaysHoleInOne) {
+		if (golfLegitMode) {
+			id strokesVal = nil;
+			@try {
+				strokesVal = [self valueForKey:@"strokes"];
+			} @catch (id ex) {}
+			int strokes = strokesVal ? [strokesVal intValue] : 0;
+			return (strokes >= 2) ? true : %orig;
+		}
+		return true;
+	}
+	return %orig;
 }
 
 - (bool)hole {
-	return alwaysHoleInOne ? true : %orig;
+	if (alwaysHoleInOne) {
+		if (golfLegitMode) {
+			id strokesVal = nil;
+			@try {
+				strokesVal = [self valueForKey:@"strokes"];
+			} @catch (id ex) {}
+			int strokes = strokesVal ? [strokesVal intValue] : 0;
+			return (strokes >= 2) ? true : %orig;
+		}
+		return true;
+	}
+	return %orig;
+}
+%end
+
+static void updateGolfTrajectoryMap(SKScene *scene, CGPoint dragVector) {
+	if (!golfTrajectoryMap) return;
+
+	SKNode *ball = nil;
+	@try { ball = [scene valueForKey:@"ball"]; } @catch (id ex) {}
+	if (!ball) return;
+
+	SKNode *hole = nil;
+	@try { hole = [scene valueForKey:@"hole"]; } @catch (id ex) {}
+	CGPoint holePos = hole ? hole.position : CGPointMake(scene.size.width * 0.5f, scene.size.height * 0.8f);
+
+	CGPoint p = ball.position;
+	CGPoint v = CGPointMake(-dragVector.x * 4.2f, -dragVector.y * 4.2f);
+
+	CGFloat minX = 25.0f, maxX = scene.size.width - 25.0f;
+	CGFloat minY = 25.0f, maxY = scene.size.height - 25.0f;
+
+	CGMutablePathRef golfPath = CGPathCreateMutable();
+	CGPathMoveToPoint(golfPath, NULL, p.x, p.y);
+
+	for (int step = 0; step < 160; step++) {
+		p.x += v.x * 0.016f;
+		p.y += v.y * 0.016f;
+		v.x *= 0.982f;
+		v.y *= 0.982f;
+
+		if (p.x < minX) { p.x = minX; v.x = -v.x * 0.82f; CGPathAddArc(golfPath, NULL, p.x, p.y, 4.0f, 0, M_PI * 2, YES); }
+		if (p.x > maxX) { p.x = maxX; v.x = -v.x * 0.82f; CGPathAddArc(golfPath, NULL, p.x, p.y, 4.0f, 0, M_PI * 2, YES); }
+		if (p.y < minY) { p.y = minY; v.y = -v.y * 0.82f; CGPathAddArc(golfPath, NULL, p.x, p.y, 4.0f, 0, M_PI * 2, YES); }
+		if (p.y > maxY) { p.y = maxY; v.y = -v.y * 0.82f; CGPathAddArc(golfPath, NULL, p.x, p.y, 4.0f, 0, M_PI * 2, YES); }
+
+		CGPathAddLineToPoint(golfPath, NULL, p.x, p.y);
+
+		CGFloat distToHole = hypot(p.x - holePos.x, p.y - holePos.y);
+		if (distToHole < 16.0f) {
+			CGPathAddArc(golfPath, NULL, holePos.x, holePos.y, 14.0f, 0, M_PI * 2, YES);
+			break;
+		}
+
+		if (hypot(v.x, v.y) < 8.0f) break;
+	}
+
+	SKShapeNode *trajNode = (SKShapeNode *)[scene childNodeWithName:@"gp_golf_traj"];
+	if (!trajNode) {
+		trajNode = [SKShapeNode shapeNodeWithPath:golfPath];
+		trajNode.name = @"gp_golf_traj";
+		trajNode.zPosition = 999;
+		trajNode.lineWidth = 2.5f;
+		trajNode.strokeColor = [UIColor colorWithRed:0.2f green:1.0f blue:0.4f alpha:0.9f];
+		[scene addChild:trajNode];
+	} else {
+		trajNode.path = golfPath;
+		trajNode.hidden = NO;
+	}
+	CGPathRelease(golfPath);
+}
+
+static void executeGolfAutoPuttStealth(SKScene *scene) {
+	SKNode *ball = nil;
+	@try { ball = [scene valueForKey:@"ball"]; } @catch (id ex) {}
+	if (!ball) return;
+
+	SKNode *hole = nil;
+	@try { hole = [scene valueForKey:@"hole"]; } @catch (id ex) {}
+	CGPoint holePos = hole ? hole.position : CGPointMake(scene.size.width * 0.5f, scene.size.height * 0.8f);
+
+	CGPoint ballPos = ball.position;
+	CGFloat bestAngle = 0.0f;
+	CGFloat bestPower = 0.5f;
+	CGFloat minFinalDist = 1e9;
+	BOOL foundHoleInOne = NO;
+
+	CGFloat minX = 25.0f, maxX = scene.size.width - 25.0f;
+	CGFloat minY = 25.0f, maxY = scene.size.height - 25.0f;
+
+	for (int a = 0; a < 72; a++) {
+		CGFloat theta = (a * 5.0f) * (M_PI / 180.0f);
+		for (CGFloat pwr = 0.35f; pwr <= 1.0f; pwr += 0.15f) {
+			CGPoint p = ballPos;
+			CGPoint v = CGPointMake(cosf(theta) * pwr * 800.0f, sinf(theta) * pwr * 800.0f);
+
+			for (int step = 0; step < 160; step++) {
+				p.x += v.x * 0.016f;
+				p.y += v.y * 0.016f;
+				v.x *= 0.982f;
+				v.y *= 0.982f;
+
+				if (p.x < minX) { p.x = minX; v.x = -v.x * 0.82f; }
+				if (p.x > maxX) { p.x = maxX; v.x = -v.x * 0.82f; }
+				if (p.y < minY) { p.y = minY; v.y = -v.y * 0.82f; }
+				if (p.y > maxY) { p.y = maxY; v.y = -v.y * 0.82f; }
+
+				CGFloat d = hypot(p.x - holePos.x, p.y - holePos.y);
+				if (d < 15.0f && hypot(v.x, v.y) < 300.0f) {
+					foundHoleInOne = YES;
+					bestAngle = theta;
+					bestPower = pwr;
+					break;
+				}
+				if (step == 159 && d < minFinalDist) {
+					minFinalDist = d;
+					bestAngle = theta;
+					bestPower = pwr;
+				}
+			}
+			if (foundHoleInOne) break;
+		}
+		if (foundHoleInOne) break;
+	}
+
+	CGFloat dragDist = bestPower * 90.0f;
+	CGPoint dragTouch = CGPointMake(ballPos.x - cosf(bestAngle) * dragDist, ballPos.y - sinf(bestAngle) * dragDist);
+
+	if ([scene respondsToSelector:@selector(touchDownAtPoint:)]) {
+		[scene performSelector:@selector(touchDownAtPoint:) withObject:[NSValue valueWithCGPoint:ballPos]];
+	}
+	if ([scene respondsToSelector:@selector(touchMovedToPoint:)]) {
+		[scene performSelector:@selector(touchMovedToPoint:) withObject:[NSValue valueWithCGPoint:dragTouch]];
+	}
+	dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.08 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+		if ([scene respondsToSelector:@selector(touchUpAtPoint:)]) {
+			[scene performSelector:@selector(touchUpAtPoint:) withObject:[NSValue valueWithCGPoint:dragTouch]];
+		}
+	});
+}
+
+%hook GolfScene
+%property (nonatomic, retain) UIButton *golfAutoButton;
+
+- (void)didMoveToView:(id)arg1 {
+	%orig;
+
+	if (golfAutoPuttStealth) {
+		CGFloat topInset = 20.0;
+		if (@available(iOS 11.0, *)) {
+			topInset = self.view.safeAreaInsets.top + 10.0;
+		}
+		self.golfAutoButton = makeButton(@"Auto Putt", CGRectMake([UIScreen mainScreen].bounds.size.width / 2 - 50, topInset, 100, 36), self, @selector(autoShootHoleInOne));
+		[self.view addSubview:self.golfAutoButton];
+		[self.view bringSubviewToFront:self.golfAutoButton];
+	}
+}
+
+- (void)touchMovedToPoint:(CGPoint)pt {
+	%orig;
+	if (golfTrajectoryMap) {
+		SKNode *ball = nil;
+		@try { ball = [self valueForKey:@"ball"]; } @catch (id ex) {}
+		if (ball) {
+			CGPoint drag = CGPointMake(pt.x - ball.position.x, pt.y - ball.position.y);
+			updateGolfTrajectoryMap(self, drag);
+		}
+	}
+}
+
+- (void)touchUpAtPoint:(CGPoint)pt {
+	%orig;
+	SKNode *traj = [self childNodeWithName:@"gp_golf_traj"];
+	if (traj) traj.hidden = YES;
+}
+
+%new
+- (void)autoShootHoleInOne {
+	executeGolfAutoPuttStealth(self);
 }
 %end
 
@@ -394,11 +821,27 @@ DartsScene *sharedInstance;
 
 	if (!autoCupPong) return;
 
-	UIButton *button = makeButton(@"Shoot", CGRectMake([UIScreen mainScreen].bounds.size.width / 2 - 50, 10, 100, 40), self.scene3d, @selector(shootRandomCup));
+	CGFloat topInset = 20.0;
+	if (@available(iOS 11.0, *)) {
+		topInset = self.view.safeAreaInsets.top + 10.0;
+	}
+	UIButton *button = makeButton(@"Shoot", CGRectMake([UIScreen mainScreen].bounds.size.width / 2 - 50, topInset, 100, 36), self.scene3d, @selector(shootRandomCup));
 	[self.view addSubview:button];
 	[self.view bringSubviewToFront:button];
 }
 
+%end
+
+static BeerView *gCurrentBeerView = nil;
+
+%hook SCNPhysicsBody
+- (void)applyForce:(SCNVector3)direction impulse:(BOOL)impulse {
+	if (gCurrentBeerView) {
+		if (gCurrentBeerView.F_x != 0.0f) direction.x = gCurrentBeerView.F_x;
+		if (gCurrentBeerView.F_z != 0.0f) direction.z = gCurrentBeerView.F_z;
+	}
+	%orig(direction, impulse);
+}
 %end
 
 %hook BeerView
@@ -433,18 +876,7 @@ DartsScene *sharedInstance;
 	self.F_x = (cup.pos.x - ball.position.x) * 1.3;					// yoinked from birdpoop
 	self.F_z = -1.2 / (cup.pos.z - ball.position.z + 0.25) - 2.91;	// this too
 
-	__block void (*orig_applyForce)(id self, SEL _cmd, SCNVector3 direction, BOOL impulse);
-	MSHookMessageEx(
-		[ball.physicsBody class],
-		@selector(applyForce:impulse:),
-		imp_implementationWithBlock(^(id selfRef, SCNVector3 direction, BOOL impulse) {
-			if (self.F_x) direction.x = self.F_x;
-			if (self.F_z) direction.z = self.F_z;
-
-			orig_applyForce(selfRef, @selector(applyForce:impulse:), direction, impulse);
-		}),
-		(IMP *)&orig_applyForce
-	);
+	gCurrentBeerView = self;
 
 	CGPoint dest = CGPointMake(realBallPos.x, self.frame.size.height);
 
@@ -453,6 +885,7 @@ DartsScene *sharedInstance;
 
 	self.F_x = 0;
 	self.F_z = 0;
+	gCurrentBeerView = nil;
 }
 
 %end
@@ -505,10 +938,13 @@ DartsScene *sharedInstance;
 %new
 - (void)thingAt:(NSArray *)words wordsArr:(NSMutableArray *)wordsArr blocks:(NSMutableArray *)blocks fromIndex:(int)index {
 	NSString *word = words[index];
+	NSMutableArray *availableBlocks = [blocks mutableCopy];
 	for(int i = 0; i < [word length]; i++) {
-		for(int j = 0; j < [blocks count]; j++) {
-			if([[blocks[j] valueForKey:@"letter"] isEqual:[NSString stringWithFormat:@"%c", [word characterAtIndex:i]]]) {
-				[wordsArr addObject:blocks[j]];
+		NSString *targetChar = [NSString stringWithFormat:@"%c", [word characterAtIndex:i]];
+		for(int j = 0; j < [availableBlocks count]; j++) {
+			if([[availableBlocks[j] valueForKey:@"letter"] isEqual:targetChar]) {
+				[wordsArr addObject:availableBlocks[j]];
+				[availableBlocks removeObjectAtIndex:j];
 				break;
 			}
 		}
@@ -538,7 +974,7 @@ DartsScene *sharedInstance;
 
 %new
 - (void)anagramsShow {
-	alert(self.view, @"Words", [self.words componentsJoinedByString:@"\n"]);
+	showWordList(self.view, @"Anagrams", self.words);
 }
 %end
 
@@ -563,14 +999,73 @@ DartsScene *sharedInstance;
 %new
 - (void)hunt_revealWords {
 	[self revealWords:YES];
-	NSMutableArray *words = [[[[self valueForKey:@"wordList"] valueForKey:@"words_string"] stringByReplacingOccurrencesOfString:@"?" withString:@""] componentsSeparatedByString:@"|"].mutableCopy;
+	NSArray *words = [[[[self valueForKey:@"wordList"] valueForKey:@"words_string"] stringByReplacingOccurrencesOfString:@"?" withString:@""] componentsSeparatedByString:@"|"];
+	NSMutableArray *validWords = [[NSMutableArray alloc] init];
 	for (NSString *word in words) {
-		if (![self checkWord:word flag:0]) {
-			[words removeObject:word];
+		if ([self checkWord:word flag:0]) {
+			[validWords addObject:word];
 		}
 	}
 
-	alert(self.view, @"Words", [words componentsJoinedByString:@"\n"]);
+	showWordList(self.view, @"Word Hunt", validWords);
+}
+%end
+
+%hook BasketScene
+%property (nonatomic, retain) UIButton *autoBasketButton;
+
+- (void)didMoveToView:(id)arg1 {
+	%orig;
+
+	if (basketAutoSwish) {
+		CGFloat topInset = 20.0;
+		if (@available(iOS 11.0, *)) {
+			topInset = self.view.safeAreaInsets.top + 10.0;
+		}
+		self.autoBasketButton = makeButton(@"Auto Swish", CGRectMake([UIScreen mainScreen].bounds.size.width / 2 - 55, topInset, 110, 36), self, @selector(gp_autoSwishShoot));
+		[self.view addSubview:self.autoBasketButton];
+		[self.view bringSubviewToFront:self.autoBasketButton];
+	}
+}
+
+- (void)update:(double)arg1 {
+	%orig;
+
+	if (basketInfiniteTimer) {
+		@try {
+			[self setValue:@(60) forKey:@"time"];
+		} @catch (id ex) {}
+	}
+}
+
+%new
+- (void)gp_autoSwishShoot {
+	CGPoint startPos = CGPointMake(self.size.width * 0.5, 140.0);
+	CGPoint hoopPos = CGPointMake(self.size.width * 0.5, self.size.height - 180.0);
+	
+	if ([self respondsToSelector:@selector(touchDownAtPoint:)]) {
+		[self performSelector:@selector(touchDownAtPoint:) withObject:[NSValue valueWithCGPoint:startPos]];
+	}
+	if ([self respondsToSelector:@selector(touchMovedToPoint:)]) {
+		[self performSelector:@selector(touchMovedToPoint:) withObject:[NSValue valueWithCGPoint:hoopPos]];
+	}
+	if ([self respondsToSelector:@selector(touchUpAtPoint:)]) {
+		[self performSelector:@selector(touchUpAtPoint:) withObject:[NSValue valueWithCGPoint:hoopPos]];
+	}
+}
+%end
+
+%hook TanksScene
+- (void)update:(double)arg1 {
+	%orig;
+	if (tanksTrajectory) {
+		@try {
+			SKShapeNode *traj = [self valueForKey:@"trajectory"];
+			if (traj) {
+				traj.hidden = NO;
+			}
+		} @catch (id ex) {}
+	}
 }
 %end
 
@@ -581,7 +1076,8 @@ DartsScene *sharedInstance;
 }
 %end
 
-%ctor {
+static void loadPrefs(void) {
+	reloadPreferences();
 	archeryDisableWind = boolForKey(@"kArcheryDisableWind");
 	archeryDisableTimer = boolForKey(@"kDisableTimer");
 	archery50ft = boolForKey(@"kArchery50ft");
@@ -590,24 +1086,53 @@ DartsScene *sharedInstance;
 	alwaysShowLines = boolForKey(@"kAlwaysShowLines");
 	rgbLine = boolForKey(@"kRGBLine");
 	alwaysMoveCueBall = boolForKey(@"kAlwaysMoveCueBall");
+	poolBankShots = boolForKey(@"kPoolBankShots");
+	poolFullTrajectory = boolForKey(@"kPoolFullTrajectory");
+	poolBreakToOneTurnWin = boolForKey(@"kPoolBreakToOneTurnWin");
 	oneDartWin = boolForKey(@"kOneDart");
 	dartAimbot = boolForKey(@"kDartsAimbot");
 	tanksDisableWind = boolForKey(@"kTanksDisableWind");
+	tanksTrajectory = boolForKey(@"kTanksTrajectory");
 	alwaysHoleInOne = boolForKey(@"kHoleInOne");
+	golfLegitMode = boolForKey(@"kGolfLegitMode");
+	golfTrajectoryMap = boolForKey(@"kGolfTrajectoryMap");
+	golfAutoPuttStealth = boolForKey(@"kGolfAutoPuttStealth");
 	oneCupWin = boolForKey(@"kOneCup");
 	autoCupPong = boolForKey(@"kAutoCupPong");
 	revealWords = boolForKey(@"kRevealWords");
 	autoEnterWords = boolForKey(@"kAutoEnterWords");
 	seeEnemyShips = boolForKey(@"kSeeEnemies");
+	basketAutoSwish = boolForKey(@"kBasketAutoSwish");
+	basketInfiniteTimer = boolForKey(@"kBasketInfiniteTimer");
+}
+
+static void prefsNotificationCallback(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
+	loadPrefs();
+}
+
+%ctor {
+	CFNotificationCenterAddObserver(
+		CFNotificationCenterGetDarwinNotifyCenter(),
+		NULL,
+		prefsNotificationCallback,
+		CFSTR("com.fiore.gameseagull.prefs/ReloadPrefs"),
+		NULL,
+		CFNotificationSuspensionBehaviorDeliverImmediately
+	);
+	loadPrefs();
 
 	if (extendLines) {
 		uint32_t patch = 0x52a9cdc8;
 		uint8_t needle[4] = { 0x08, 0x4e, 0xa8, 0x52 };
 		for (NSString *class in @[@"PoolScene", @"PoolScene2", @"PoolScene3"]) {
-			uint64_t method = (uint64_t)[NSClassFromString(class) instanceMethodForSelector:@selector(mMove)];
+			Class cls = NSClassFromString(class);
+			if (!cls) continue;
+			uint64_t method = (uint64_t)[cls instanceMethodForSelector:@selector(mMove)];
+			if (!method) continue;
 			uint64_t result = bh_memmem((const uint8_t*)method, 0x1000, needle, 4);
+			if (!result) continue;
 
-			HookMemory(NSClassFromString(class), @selector(mMove), (result - method), patch);
+			HookMemory(cls, @selector(mMove), (result - method), patch);
 		}
 	}
 	

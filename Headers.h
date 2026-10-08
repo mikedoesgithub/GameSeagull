@@ -6,14 +6,20 @@
 
 @interface PoolScene : SKScene
 @property (nonatomic) int currentColorHue;
+@property (nonatomic, retain) SKShapeNode *fullTrajNode;
+- (void)drawFullMultiBallTrajectory;
 @end
 
-@interface PoolScene2 : NSObject
+@interface PoolScene2 : SKScene
 @property (nonatomic) int currentColorHue;
+@property (nonatomic, retain) SKShapeNode *fullTrajNode;
+- (void)drawFullMultiBallTrajectory;
 @end
 
-@interface PoolScene3 : NSObject
+@interface PoolScene3 : SKScene
 @property (nonatomic) int currentColorHue;
+@property (nonatomic, retain) SKShapeNode *fullTrajNode;
+- (void)drawFullMultiBallTrajectory;
 @end
 
 @interface BeerView : SCNView
@@ -73,6 +79,39 @@
 @property (nonatomic, retain) UIButton *hunt_revealWordsButton;
 - (void)revealWords:(BOOL)reveal;
 - (bool)checkWord:(NSString *)word flag:(bool)flag;
+@end
+
+@interface PoolBall : NSObject
+- (bool)isStripes;
+- (bool)isSolid;
+@end
+
+@interface GolfBall : NSObject
+@property (assign) int strokeCount;
+- (bool)inside;
+- (bool)hole;
+@end
+
+@interface BasketBall : SKNode
+@property (nonatomic, assign) CGPoint velocity;
+@end
+
+@interface BasketScene : SKScene
+@property (nonatomic, retain) UIButton *autoBasketButton;
+- (void)throwBallWithVelocity:(CGPoint)vel;
+@end
+
+@interface TanksScene : SKScene
+@property (nonatomic, retain) SKShapeNode *trajectoryLine;
+@end
+
+@interface GolfScene : SKScene
+@property (nonatomic, retain) UIButton *golfAutoButton;
+@property (nonatomic, retain) SKShapeNode *golfTrajectoryNode;
+- (void)touchDownAtPoint:(CGPoint)pt;
+- (void)touchMovedToPoint:(CGPoint)pt;
+- (void)touchUpAtPoint:(CGPoint)pt;
+- (void)autoShootHoleInOne;
 @end
 
 @interface GameIcon : NSObject

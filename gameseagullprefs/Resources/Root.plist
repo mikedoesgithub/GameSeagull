@@ -182,6 +182,57 @@
 		</dict>
 		<dict>
 			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>defaults</key>
+			<string>com.fiore.gameseagull.prefs</string>
+			<key>key</key>
+			<string>kPoolBankShots</string>
+			<key>label</key>
+			<string>Cushion Bank Lines</string>
+			<key>iconImageSystem</key>
+			<dict>
+				<key>name</key>
+				<string>arrow.triangle.swap</string>
+			</dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>defaults</key>
+			<string>com.fiore.gameseagull.prefs</string>
+			<key>key</key>
+			<string>kPoolFullTrajectory</string>
+			<key>label</key>
+			<string>Full Multi-Ball Trajectory</string>
+			<key>iconImageSystem</key>
+			<dict>
+				<key>name</key>
+				<string>circle.hexagongrid.fill</string>
+			</dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>defaults</key>
+			<string>com.fiore.gameseagull.prefs</string>
+			<key>key</key>
+			<string>kPoolBreakToOneTurnWin</string>
+			<key>label</key>
+			<string>Break to Win in One Turn *</string>
+			<key>iconImageSystem</key>
+			<dict>
+				<key>name</key>
+				<string>bolt.circle.fill</string>
+			</dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+		</dict>
+		<dict>
+			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
 			<string>Darts</string>
@@ -236,12 +287,82 @@
 				<key>name</key>
 				<string>wind</string>
 			</dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>defaults</key>
+			<string>com.fiore.gameseagull.prefs</string>
+			<key>key</key>
+			<string>kTanksTrajectory</string>
+			<key>label</key>
+			<string>Show Trajectory Guide</string>
+			<key>iconImageSystem</key>
+			<dict>
+				<key>name</key>
+				<string>point.topleft.down.curvedto.point.bottomright.up</string>
+			</dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 		</dict>
 		<dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
 			<string>Mini Golf</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>defaults</key>
+			<string>com.fiore.gameseagull.prefs</string>
+			<key>key</key>
+			<string>kGolfTrajectoryMap</string>
+			<key>label</key>
+			<string>Full Trajectory / Bounce Map</string>
+			<key>iconImageSystem</key>
+			<dict>
+				<key>name</key>
+				<string>point.topleft.down.curvedto.point.bottomright.up</string>
+			</dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>defaults</key>
+			<string>com.fiore.gameseagull.prefs</string>
+			<key>key</key>
+			<string>kGolfAutoPuttStealth</string>
+			<key>label</key>
+			<string>Stealth Auto Hole-in-One</string>
+			<key>iconImageSystem</key>
+			<dict>
+				<key>name</key>
+				<string>sparkles</string>
+			</dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>defaults</key>
+			<string>com.fiore.gameseagull.prefs</string>
+			<key>key</key>
+			<string>kGolfLegitMode</string>
+			<key>label</key>
+			<string>Legit Mode (Sink on Stroke 2+)</string>
+			<key>iconImageSystem</key>
+			<dict>
+				<key>name</key>
+				<string>checkmark.shield</string>
+			</dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -257,13 +378,14 @@
 				<key>name</key>
 				<string>figure.golf</string>
 			</dict>
-			<key>pl_filter</key>
-			<dict>
-				<key>CoreFoundationVersion</key>
-				<array>
-					<real>1946.102</real>
-				</array>
-			</dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>Basketball</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -271,22 +393,33 @@
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
 			<key>key</key>
-			<string>kHoleInOne</string>
+			<string>kBasketAutoSwish</string>
 			<key>label</key>
-			<string>Always Hole in One *</string>
+			<string>Auto Swish Button</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
-				<string>flag.circle</string>
+				<string>circle.circle</string>
 			</dict>
-			<key>pl_filter</key>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>defaults</key>
+			<string>com.fiore.gameseagull.prefs</string>
+			<key>key</key>
+			<string>kBasketInfiniteTimer</string>
+			<key>label</key>
+			<string>Freeze Shot Clock</string>
+			<key>iconImageSystem</key>
 			<dict>
-				<key>CoreFoundationVersion</key>
-				<array>
-					<real>0.0</real>
-					<real>1946.102</real>
-				</array>
+				<key>name</key>
+				<string>timer</string>
 			</dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 		</dict>
 		<dict>
 			<key>cell</key>

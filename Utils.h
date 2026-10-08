@@ -10,7 +10,10 @@ uint64_t bh_memmem(const uint8_t* haystack, size_t hlen, const uint8_t* needle, 
 void HookMemory(Class class, SEL selector, uint64_t offset, uint32_t data);
 int PatchMemory(const struct LHMemoryPatch *patches, int count);
 void alert(UIView *object, NSString *title, NSString *message);
-NSDictionary* getPreferences();
+void showWordList(UIView *parentView, NSString *title, NSArray<NSString *> *words);
+NSDictionary* getPreferences(void);
+void reloadPreferences(void);
 bool boolForKey(NSString *key);
+int intForKey(NSString *key, int defaultVal);
 UIButton *makeButton(NSString *title, CGRect frame, id target, SEL selector);
 SCNVector3 getAimbotPos(int multiplier, int number);
