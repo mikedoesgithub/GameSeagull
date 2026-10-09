@@ -1,11 +1,14 @@
 workflows:
   build-gameseagull:
-    name: Build GameSeagull Tweak
+    name: Build GameSeagull v3.0 TrollStore IPA
     max_build_duration: 30
     instance_type: mac_mini_m2
     environment:
       vars:
         THEOS: /Users/builder/theos
+        # Set this to your decrypted IPA download URL (direct link)
+        # or upload the IPA as a Codemagic environment file
+        DECRYPTED_IPA_URL: "https://example.com/com.gamerdelights.gamepigeon-2.2.6-Decrypted.ipa"
     scripts:
       - name: Setup Theos & iOS SDK
         script: |
@@ -13,27 +16,160 @@ workflows:
           echo "==> Cloning Theos"
           git clone --recursive https://github.com/theos/theos.git $THEOS
 
-          echo "==> Fetching iOS 16.5 SDK"
-          curl -sSL "https://github.com/theos/sdks/releases/download/latest/iPhoneOS16.5.sdk.tar.xz" | tar -xJ -C $THEOS/sdks/
+          echo "==> Installing latest iOS SDK"
+          $THEOS/bin/install-sdk latest
 
-          echo "==> Setting up Cephei Headers"
-          git clone --depth=1 https://github.com/hbang/libcephei.git /tmp/cephei
+          echo "==> Setting up Cephei headers"
+          git clone --depth=1 https://github.com/hbang/libcephei.git /tmp/cephei || true
           mkdir -p $THEOS/include
           cp -r /tmp/cephei/headers/* $THEOS/include/ 2>/dev/null || true
 
-      - name: Build Rootful & Rootless Debs
+      - name: Build GameSeagull Dylib
         script: |
           set -e
-          chmod +x ./build_release.sh
-          ./build_release.sh
+          echo "==> Building GameSeagull tweak (arm64 + arm64e)"
+          make clean 2>/dev/null || true
+          make FINALPACKAGE=1
 
-      - name: Build TrollStore IPA
+          echo "==> Locating built dylib"
+          DYLIB=$(find .theos -name "GameSeagull.dylib" -o -name "gameseagull.dylib" | head -1)
+          if [ -z "$DYLIB" ]; then
+            echo "ERROR: dylib not found after build!"
+            find .theos -name "*.dylib"
+            exit 1
+          fi
+          mkdir -p build
+          cp "$DYLIB" build/gameseagull.dylib
+          echo "==> Built dylib:"
+          ls -lh build/gameseagull.dylib
+          file build/gameseagull.dylib
+
+      - name: Fetch Decrypted IPA & CydiaSubstrate
         script: |
           set -e
-          chmod +x ./package_trollstore.sh
-          ./package_trollstore.sh
+          mkdir -p /tmp/repack
+
+          # Get decrypted IPA - check for uploaded file first, then URL
+          if [ -f "$CM_EXPORT_DIR/decrypted.ipa" ]; then
+            echo "==> Using uploaded decrypted IPA"
+            cp "$CM_EXPORT_DIR/decrypted.ipa" /tmp/repack/decrypted.ipa
+          elif [ -f "base_ipa/decrypted.ipa" ]; then
+            echo "==> Using repo-bundled decrypted IPA"
+            cp "base_ipa/decrypted.ipa" /tmp/repack/decrypted.ipa
+          else
+            echo "==> Downloading decrypted IPA from URL"
+            curl -sSL -o /tmp/repack/decrypted.ipa "$DECRYPTED_IPA_URL"
+          fi
+
+          # Get old GameSeagull IPA for CydiaSubstrate.framework
+          echo "==> Fetching CydiaSubstrate from old GameSeagull release"
+          curl -sSL -L -o /tmp/repack/old_gs.ipa \
+            "https://github.com/donato-fiore/TrollStoreGameSeagull/releases/download/v2.1/GameSeagull.ipa"
+
+          # Extract CydiaSubstrate.framework
+          mkdir -p /tmp/repack/old_extract
+          unzip -q /tmp/repack/old_gs.ipa -d /tmp/repack/old_extract
+          SUBSTRATE_DIR=$(find /tmp/repack/old_extract -name "CydiaSubstrate.framework" -type d | head -1)
+          if [ -z "$SUBSTRATE_DIR" ]; then
+            echo "ERROR: CydiaSubstrate.framework not found in old IPA!"
+            exit 1
+          fi
+          cp -R "$SUBSTRATE_DIR" /tmp/repack/CydiaSubstrate.framework
+          echo "==> CydiaSubstrate.framework extracted"
+
+      - name: Repack IPA with Dylib Injection
+        script: |
+          set -e
+          WORK=/tmp/repack/work
+          mkdir -p "$WORK"
+
+          echo "==> Unpacking decrypted IPA"
+          unzip -q /tmp/repack/decrypted.ipa -d "$WORK"
+
+          APP_PATH=$(find "$WORK/Payload" -maxdepth 1 -name "*.app" | head -1)
+          if [ ! -d "$APP_PATH" ]; then
+            echo "ERROR: No .app bundle found!"; exit 1
+          fi
+          echo "==> App bundle: $APP_PATH"
+
+          FRAMEWORKS_DIR="$APP_PATH/Frameworks"
+          mkdir -p "$FRAMEWORKS_DIR"
+
+          # Copy gameseagull.dylib
+          echo "==> Injecting gameseagull.dylib"
+          cp build/gameseagull.dylib "$FRAMEWORKS_DIR/gameseagull.dylib"
+
+          # Copy CydiaSubstrate.framework
+          echo "==> Injecting CydiaSubstrate.framework"
+          cp -R /tmp/repack/CydiaSubstrate.framework "$FRAMEWORKS_DIR/CydiaSubstrate.framework"
+
+          # Mach-O LC_LOAD_DYLIB injection
+          BINARY="$APP_PATH/PlugIns/MessagesExtension.appex/MessagesExtension"
+          echo "==> Patching MessagesExtension Mach-O binary"
+          python3 - "$BINARY" <<'PYEOF'
+          import struct, sys
+
+          path = sys.argv[1]
+          data = bytearray(open(path, 'rb').read())
+
+          # Parse 64-bit Mach-O header
+          magic, cputype, cpusubtype, filetype, ncmds, sizeofcmds, flags, reserved = \
+              struct.unpack('<IIIIIIII', data[:32])
+
+          assert magic == 0xFEEDFACF, f"Not a 64-bit Mach-O! magic=0x{magic:08X}"
+
+          # Check if already injected
+          header_region = data[32:32+sizeofcmds].decode('latin-1', errors='ignore')
+          if 'gameseagull.dylib' in header_region:
+              print("Already injected, skipping")
+              sys.exit(0)
+
+          # Build LC_LOAD_DYLIB command
+          dylib_name = b'@rpath/gameseagull.dylib\x00'
+          pad = (8 - (len(dylib_name) % 8)) % 8
+          padded_name = dylib_name + b'\x00' * pad
+          cmdsize = 24 + len(padded_name)  # dylib_command header (24) + string
+
+          # LC_LOAD_DYLIB = 0x0C
+          # struct: cmd(4) + cmdsize(4) + name_offset(4) + timestamp(4) + current_version(4) + compat_version(4) + name
+          cmd_data = struct.pack('<IIIIII', 0x0C, cmdsize, 24, 2, 0x10000, 0x10000) + padded_name
+
+          # Insert after existing load commands
+          insert_offset = 32 + sizeofcmds
+          zero_check = data[insert_offset:insert_offset + cmdsize]
+          assert zero_check == b'\x00' * cmdsize, \
+              f"Not enough zero padding after load commands! Need {cmdsize} bytes, got non-zero at offset {insert_offset}"
+
+          # Write the new load command
+          data[insert_offset:insert_offset + cmdsize] = cmd_data
+
+          # Update header: ncmds + 1, sizeofcmds + cmdsize
+          struct.pack_into('<II', data, 16, ncmds + 1, sizeofcmds + cmdsize)
+
+          open(path, 'wb').write(data)
+          print(f"Injected LC_LOAD_DYLIB @rpath/gameseagull.dylib (ncmds={ncmds+1}, sizeofcmds={sizeofcmds+cmdsize})")
+          PYEOF
+
+          # Verify injection
+          echo "==> Verifying injection"
+          otool -L "$BINARY" | grep gameseagull || echo "WARNING: otool verification inconclusive"
+
+          # Verify version
+          echo "==> IPA Version Info:"
+          /usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$APP_PATH/Info.plist" || true
+          /usr/libexec/PlistBuddy -c "Print CFBundleVersion" "$APP_PATH/Info.plist" || true
+
+          # Repack
+          echo "==> Repacking final IPA"
+          mkdir -p build
+          rm -f build/GameSeagull-v3.0-TrollStore.ipa
+          (cd "$WORK" && zip -q -r "$OLDPWD/build/GameSeagull-v3.0-TrollStore.ipa" Payload)
+
+          echo "=========================================="
+          echo "  SUCCESS! TrollStore IPA ready:"
+          ls -lh build/GameSeagull-v3.0-TrollStore.ipa
+          echo "=========================================="
 
     artifacts:
-      - build/*.deb
-      - packages/*.deb
       - build/*.ipa
+      - build/*.dylib
