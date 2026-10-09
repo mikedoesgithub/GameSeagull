@@ -852,6 +852,71 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
+			<string>Unlockables (Skins, Reveals, Ads)</string>
+			<key>footerText</key>
+			<string>Flips the game's local entitlement checks: all avatar/skin packs read as owned, reveal consumables never run out, ads never show.</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>defaults</key>
+			<string>com.fiore.gameseagull.prefs</string>
+			<key>key</key>
+			<string>kUnlockAllContent</string>
+			<key>default</key>
+			<true/>
+			<key>label</key>
+			<string>Unlock All Skins &amp; Packs</string>
+			<key>iconImageSystem</key>
+			<dict>
+				<key>name</key>
+				<string>lock.open.fill</string>
+			</dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>defaults</key>
+			<string>com.fiore.gameseagull.prefs</string>
+			<key>key</key>
+			<string>kInfiniteReveals</string>
+			<key>default</key>
+			<true/>
+			<key>label</key>
+			<string>Infinite Reveals</string>
+			<key>iconImageSystem</key>
+			<dict>
+				<key>name</key>
+				<string>eye.fill</string>
+			</dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>defaults</key>
+			<string>com.fiore.gameseagull.prefs</string>
+			<key>key</key>
+			<string>kNoAds</string>
+			<key>default</key>
+			<true/>
+			<key>label</key>
+			<string>Remove Ads</string>
+			<key>iconImageSystem</key>
+			<dict>
+				<key>name</key>
+				<string>megaphone.slash.fill</string>
+			</dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
 			<string>Misc</string>
 			<key>footerText</key>
 			<string>* Extremely Suspicious to your Opponent</string>

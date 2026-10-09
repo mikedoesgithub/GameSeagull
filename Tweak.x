@@ -47,6 +47,9 @@ bool shuffleGuide;
 bool knockSuperImpulse;
 bool pokerCardESP;
 bool questionsESP;
+bool unlockAllContent;
+bool infiniteReveals;
+bool noAds;
 
 DartsScene *sharedInstance;
 
@@ -2092,6 +2095,136 @@ static void BasketballAutoSwish(SKScene *scene) {
 }
 %end
 
+// ================= Unlock Pack: skins, packs, reveals, ads =================
+// PIOPayVault is the single entitlement vault: hasItem:/countOfItem: gate
+// all unlock + consumable checks game-wide. Signatures verified from 2.0.13
+// type encodings (hasItem: B+@, countOfItem: Q+@) — no block guessing.
+%hook PIOPayVault
+- (BOOL)hasItem:(id)arg1 {
+	if (unlockAllContent || infiniteReveals) return YES;
+	return %orig;
+}
+- (NSUInteger)countOfItem:(id)arg1 {
+	if (unlockAllContent || infiniteReveals) return 999;
+	return %orig;
+}
+%end
+
+// Root-controller consumables (reveals): int getter + spend path.
+%hook MessagesViewController
+- (int)consumableGet:(id)arg1 {
+	if (infiniteReveals) return 999;
+	return %orig;
+}
+- (BOOL)consumableConsume:(id)arg1 ammount:(int)arg2 {
+	if (infiniteReveals) return YES;
+	return %orig;
+}
+- (void)showAd {
+	if (!noAds) %orig;
+}
+- (void)showAd:(id)arg1 {
+	if (!noAds) %orig;
+}
+%end
+
+// Per-pack theme flags (pool animals/evil/variety/patterns + avatar packs).
+%hook PoolCustomizePack
+- (BOOL)unlocked {
+	if (unlockAllContent) return YES;
+	return %orig;
+}
+%end
+
+// Ad removal: entitlement flag + every show path no-op'd.
+%hook GameScene
+- (id)remove_ads {
+	if (noAds) return @YES;
+	return %orig;
+}
+- (BOOL)canShowAd {
+	if (noAds) return NO;
+	return %orig;
+}
+- (void)showAd {
+	if (!noAds) %orig;
+}
+- (void)showBannerAd {
+	if (!noAds) %orig;
+}
+- (void)requestBannerAd {
+	if (!noAds) %orig;
+}
+%end
+
+%hook GameViewController
+- (void)showAd {
+	if (!noAds) %orig;
+}
+- (void)showAd:(id)arg1 {
+	if (!noAds) %orig;
+}
+- (void)showAd:(id)arg1 force:(BOOL)arg2 {
+	if (!noAds) %orig;
+}
+- (void)showInt:(id)arg1 {
+	if (!noAds) %orig;
+}
+- (void)showInterstitial {
+	if (!noAds) %orig;
+}
+- (void)displayAdFullscreen:(id)arg1 {
+	if (!noAds) %orig;
+}
+%end
+
+// Paywall overlay: never shown when everything is unlocked.
+%hook PoolCustomizeScene
+- (void)showUnlock {
+	if (!unlockAllContent) %orig;
+}
+%end
+%hook WordgamesStoreScene
+- (void)showUnlock {
+	if (!unlockAllContent) %orig;
+}
+%end
+%hook SeaCustomizeScene
+- (void)showUnlock {
+	if (!unlockAllContent) %orig;
+}
+%end
+%hook SettingsScene
+- (void)showUnlock {
+	if (!unlockAllContent) %orig;
+}
+%end
+%hook PaintCustomizeScene
+- (void)showUnlock {
+	if (!unlockAllContent) %orig;
+}
+%end
+%hook BeerCustomizeScene
+- (void)showUnlock {
+	if (!unlockAllContent) %orig;
+}
+%end
+%hook GPlusScene
+- (void)showUnlock {
+	if (!unlockAllContent) %orig;
+}
+%end
+%hook DartsCustomizeScene
+- (void)showUnlock {
+	if (!unlockAllContent) %orig;
+}
+%end
+%hook MancalaCustomizeScene
+- (void)showUnlock {
+	if (!unlockAllContent) %orig;
+}
+%end
+
 %hook SettingsScene
 - (void)didMoveToView:(id)arg1 {
 	%orig;
@@ -2171,6 +2304,9 @@ static void loadPrefs(void) {
 	knockSuperImpulse = boolForKey(@"kKnockSuperImpulse");
 	pokerCardESP = boolForKey(@"kPokerCardESP");
 	questionsESP = boolForKey(@"kQuestionsESP");
+	unlockAllContent = boolForKey(@"kUnlockAllContent");
+	infiniteReveals = boolForKey(@"kInfiniteReveals");
+	noAds = boolForKey(@"kNoAds");
 }
 
 static void prefsNotificationCallback(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
