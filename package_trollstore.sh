@@ -66,6 +66,78 @@ else
     echo "[!] Using current Frameworks/gameseagull.dylib in template bundle."
 fi
 
+# 4b. Ensure CydiaSubstrate.framework (fresh dylib needs it via @rpath)
+if [ ! -d "$FRAMEWORKS_DIR/CydiaSubstrate.framework" ]; then
+    echo "[+] CydiaSubstrate.framework missing - fetching from v2.1 release..."
+    mkdir -p "$WORK_DIR/substrate_src"
+    curl -sSL -L -o "$WORK_DIR/old_gs.ipa" "$BASE_IPA_URL"
+    unzip -q "$WORK_DIR/old_gs.ipa" -d "$WORK_DIR/substrate_src"
+    SUBSTRATE_DIR="$(find "$WORK_DIR/substrate_src" -name "CydiaSubstrate.framework" -type d | head -1)"
+    if [ -z "$SUBSTRATE_DIR" ]; then echo "[-] CydiaSubstrate.framework not found!"; exit 1; fi
+    cp -R "$SUBSTRATE_DIR" "$FRAMEWORKS_DIR/CydiaSubstrate.framework"
+    echo "[+] CydiaSubstrate.framework injected"
+fi
+
+# 4c+4d. Patch dylib substrate ref to @rpath + ensure LC_LOAD_DYLIB in appex binary
+echo "[+] Patching Mach-O load commands..."
+python3 - "$FRAMEWORKS_DIR/gameseagull.dylib" "$APP_PATH" <<'PYEOF'
+import struct, sys, os, glob
+
+dylib_path, app_path = sys.argv[1], sys.argv[2]
+OLD = b'/Library/Frameworks/CydiaSubstrate.framework/CydiaSubstrate\x00'
+NEW = b'@rpath/CydiaSubstrate.framework/CydiaSubstrate\x00'
+
+data = bytearray(open(dylib_path, 'rb').read())
+if data.find(NEW) != -1:
+    print('dylib substrate ref already @rpath, skipping')
+elif data.count(OLD) == 1:
+    idx = data.find(OLD)
+    data[idx:idx+len(NEW)] = NEW
+    for i in range(idx+len(NEW), idx+len(OLD)):
+        data[i] = 0
+    open(dylib_path, 'wb').write(data)
+    print('patched dylib substrate ref to @rpath')
+else:
+    raise SystemExit('unexpected substrate refs in dylib: old=%d new=%d' % (data.count(OLD), data.count(NEW)))
+
+def find_appex_binary(app):
+    for ap in glob.glob(os.path.join(app, 'PlugIns', '*.appex')):
+        cand = os.path.join(ap, os.path.basename(ap).replace('.appex', ''))
+        if os.path.isfile(cand):
+            return cand
+    best, bestsz = None, 0
+    for ap in glob.glob(os.path.join(app, 'PlugIns', '*.appex')):
+        for root, _, files in os.walk(ap):
+            for f in files:
+                p = os.path.join(root, f)
+                if '.' not in os.path.basename(f) and os.path.isfile(p):
+                    sz = os.path.getsize(p)
+                    if sz > bestsz:
+                        best, bestsz = p, sz
+    return best
+
+binary = find_appex_binary(app_path)
+print('appex binary:', binary)
+if not binary:
+    raise SystemExit('no appex binary found')
+data = bytearray(open(binary, 'rb').read())
+magic, _, _, _, ncmds, sizeofcmds, _, _ = struct.unpack('<IIIIIIII', data[:32])
+assert magic == 0xFEEDFACF, 'not a 64-bit Mach-O'
+if b'gameseagull.dylib' in data[32:32+sizeofcmds]:
+    print('LC_LOAD_DYLIB already present, skipping')
+else:
+    name = b'@rpath/gameseagull.dylib\x00'
+    name += b'\x00' * ((8 - (len(name) % 8)) % 8)
+    cmdsize = 24 + len(name)
+    cmd = struct.pack('<IIIIII', 0x0C, cmdsize, 24, 2, 0x10000, 0x10000) + name
+    off = 32 + sizeofcmds
+    assert data[off:off+cmdsize] == b'\x00' * cmdsize, 'no zero padding for new load command'
+    data[off:off+cmdsize] = cmd
+    struct.pack_into('<II', data, 16, ncmds + 1, sizeofcmds + cmdsize)
+    open(binary, 'wb').write(data)
+    print('injected LC_LOAD_DYLIB @rpath/gameseagull.dylib')
+PYEOF
+
 # 5. Pack final IPA
 echo "[+] Repacking into TrollStore IPA: $OUTPUT_IPA..."
 rm -f "$OUTPUT_IPA"

@@ -1,6 +1,9 @@
 @import SpriteKit;
 @import SceneKit;
 
+@interface ArcheryScene : SKScene
+@end
+
 @interface ArcheryView : NSObject
 @end
 
@@ -109,6 +112,11 @@
 - (void)updateDotsOverlay;
 @end
 
+// 2.2.6 renamed Gomoku -> Renju (board/map/pieces ivars)
+@interface RenjuScene : SKScene
+- (void)updateGomokuOverlay;
+@end
+
 @interface GomokuScene : SKScene
 - (void)updateGomokuOverlay;
 @end
@@ -129,10 +137,12 @@
 }
 @property (nonatomic, retain) NSArray *words;
 @property (nonatomic, retain) UIButton *hunt_revealWordsButton;
+@property (nonatomic, retain) UIButton *hunt_autoButton;
 - (void)revealWords:(BOOL)reveal;
 - (void)revealAllWordsInSheet;
 - (void)winGame;
 - (bool)checkWord:(NSString *)word flag:(bool)flag;
+- (bool)checkWord:(NSString *)word;
 - (void)solveAndSubmitAllWords;
 @end
 
@@ -199,6 +209,9 @@
 - (void)checkAttack;
 - (void)updateCheckersOverlay;
 - (void)autoPlayBestCheckersMove;
+- (void)touchDownAtPoint:(CGPoint)pt;
+- (void)touchMovedToPoint:(CGPoint)pt;
+- (void)touchUpAtPoint:(CGPoint)pt;
 @end
 
 @interface ChessScene : SKScene
@@ -210,6 +223,8 @@
 - (void)showMoves:(int)player add:(BOOL)add;
 - (void)updateReversiOverlay;
 - (void)autoPlayBestReversiMove;
+- (void)touchDownAtPoint:(CGPoint)pt;
+- (void)touchUpAtPoint:(CGPoint)pt;
 @end
 
 @interface FillScene : SKScene

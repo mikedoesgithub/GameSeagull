@@ -6,6 +6,6 @@ Description: GamePigeon hax have never been cheaper!
 Maintainer: fiore
 Author: fiore
 Section: Tweaks
-Depends: mobilesubstrate, ws.hbang.common (>= 1.17), firmware (>= 14.0)
+Depends: mobilesubstrate, firmware (>= 14.0)
 SileoDepiction: https://raw.githubusercontent.com/donato-fiore/repo/main/depictions/com.fiore.gameseagull/depiction.json
 Icon: https://raw.githubusercontent.com/donato-fiore/repo/main/assets/com.fiore.gameseagull/icon.png

@@ -19,10 +19,7 @@ workflows:
           echo "==> Installing latest iOS SDK"
           $THEOS/bin/install-sdk latest
 
-          echo "==> Setting up Cephei headers"
-          git clone --depth=1 https://github.com/hbang/libcephei.git /tmp/cephei || true
-          mkdir -p $THEOS/include
-          cp -r /tmp/cephei/headers/* $THEOS/include/ 2>/dev/null || true
+          echo "==> Theos ships rootless.h + libhooker stubs; no Cephei needed (removed, 0 usages)"
 
       - name: Build GameSeagull Dylib
         script: |
@@ -43,6 +40,30 @@ workflows:
           echo "==> Built dylib:"
           ls -lh build/gameseagull.dylib
           file build/gameseagull.dylib
+
+      - name: Patch Dylib Substrate Path to @rpath
+        script: |
+          set -e
+          # Theos links CydiaSubstrate with absolute /Library/Frameworks path;
+          # TrollStore layout needs @rpath (bundled Frameworks/ copy).
+          python3 - build/gameseagull.dylib <<'PYEOF'
+          import sys
+          path = sys.argv[1]
+          data = bytearray(open(path, 'rb').read())
+          old = b'/Library/Frameworks/CydiaSubstrate.framework/CydiaSubstrate\x00'
+          new = b'@rpath/CydiaSubstrate.framework/CydiaSubstrate\x00'
+          if data.find(new) != -1:
+              print('dylib substrate ref already @rpath, skipping')
+          elif data.count(old) == 1:
+              idx = data.find(old)
+              data[idx:idx+len(new)] = new
+              for i in range(idx+len(new), idx+len(old)):
+                  data[i] = 0
+              open(path, 'wb').write(data)
+              print('patched dylib substrate ref to @rpath')
+          else:
+              raise SystemExit('unexpected substrate refs in dylib')
+          PYEOF
 
       - name: Fetch Decrypted IPA & CydiaSubstrate
         script: |

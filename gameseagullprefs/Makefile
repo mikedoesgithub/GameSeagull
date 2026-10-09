@@ -1,5 +1,8 @@
 TARGET := iphone:clang:latest:14.0
 
+# arm64 only (arm64e cfstring relocations rejected by LLVM ld64.lld).
+ARCHS = arm64
+
 include $(THEOS)/makefiles/common.mk
 
 BUNDLE_NAME = GameSeagullPrefs
@@ -8,8 +11,12 @@ GameSeagullPrefs_FILES = GSPRootListController.m ../Utils.m
 GameSeagullPrefs_FRAMEWORKS = UIKit CoreServices
 GameSeagullPrefs_PRIVATE_FRAMEWORKS = Preferences
 GameSeagullPrefs_INSTALL_PATH = /Library/PreferenceBundles
-GameSeagullPrefs_CFLAGS = -fobjc-arc
+GameSeagullPrefs_CFLAGS = -fobjc-arc -Wno-error=atimport-in-framework-header
 GameSeagullPrefs_LIBRARIES = substrate
+
+ifeq ($(shell uname),Linux)
+GameSeagullPrefs_LDFLAGS += -fuse-ld=lld -Wl,-U,___isPlatformVersionAtLeast
+endif
 
 ifeq ($(THEOS_PACKAGE_SCHEME),rootless)
 GameSeagullPrefs_CFLAGS += -DROOTLESS

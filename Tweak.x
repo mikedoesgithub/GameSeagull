@@ -131,13 +131,11 @@ static void updateFullPoolTrajectory(SKScene *scene) {
 
 	__block CGPoint firstPt = cueBall.position;
 	__block CGPoint lastPt = cueBall.position;
-	__block int ptCount = 0;
 	CGPathApplyWithBlock(canvas.path, ^(const CGPathElement *element) {
 		if (element->type == kCGPathElementMoveToPoint) {
 			firstPt = element->points[0];
 		} else if (element->type == kCGPathElementAddLineToPoint) {
 			lastPt = element->points[0];
-			ptCount++;
 		}
 	});
 
@@ -350,113 +348,222 @@ static void executeBreakToOneTurnWin(SKScene *scene) {
 	}
 }
 
-#define IMPLEMENT_POOL_SCENE(SceneClass) \
-%hook SceneClass \
-%property (nonatomic) int currentColorHue; \
-%property (nonatomic, retain) SKShapeNode *fullTrajNode; \
-- (void)didMoveToView:(id)arg1 { \
-	%orig; \
-	if (disableHardmode) { \
-		[self setValue:@"n" forKey:@"mode"]; \
-	} \
-	if (floatingHUD) { \
-		[SeagullHUD attachToView:self.view gameType:@"8-Ball / 9-Ball Pool" target:self]; \
-	} \
-} \
-- (void)update:(double)arg1 { \
-	%orig; \
-	if (rgbLine) { \
-		SKShapeNode *canvas = [self valueForKey:@"canvas"]; \
-		self.currentColorHue = (self.currentColorHue + 1) % 360; \
-		if (canvas) { \
-			[canvas setStrokeColor:[UIColor colorWithHue:self.currentColorHue/360.0 saturation:1.0 brightness:1.0 alpha:1.0]]; \
-		} \
-	} \
-	if (alwaysMoveCueBall) { \
-		[self setValue:@(true) forKey:@"move_white"]; \
-	} \
-	if (poolPocketAssist) { \
-		@try { \
-			NSArray *balls = [self valueForKey:@"balls"]; \
-			NSArray *pockets = [self valueForKey:@"pockets"]; \
-			if (balls && pockets) { \
-				for (SKNode *b in balls) { \
-					if (!b.physicsBody) continue; \
-					CGVector vel = b.physicsBody.velocity; \
-					CGFloat speed = hypot(vel.dx, vel.dy); \
-					if (speed > 5.0f && speed < 800.0f) { \
-						CGPoint p = applyPoolPocketMagnet(b.position, CGPointMake(vel.dx, vel.dy), pockets, 40.0f); \
-						b.physicsBody.velocity = CGVectorMake(p.x, p.y); \
-					} \
-				} \
-			} \
-		} @catch (id ex) {} \
-	} \
-} \
-- (void)mMove { \
-	%orig; \
-	if (poolFullTrajectory) { \
-		updateFullPoolTrajectory(self); \
-	} \
-} \
-- (void)shoot:(float)angle power:(float)power spin_x:(float)spin_x spin_y:(float)spin_y save:(BOOL)save { \
-	if (poolBreakToOneTurnWin) { \
-		executeBreakToOneTurnWin(self); \
-	} \
-	%orig(angle, power, spin_x, spin_y, save); \
-	SKNode *traj = [self childNodeWithName:@"gp_full_pool_traj"]; \
-	if (traj) traj.hidden = YES; \
-} \
-- (void)touchUpAtPoint:(CGPoint)arg1 { \
-	if (poolBreakToOneTurnWin) { \
-		executeBreakToOneTurnWin(self); \
-	} \
-	%orig(arg1); \
-	SKNode *traj = [self childNodeWithName:@"gp_full_pool_traj"]; \
-	if (traj) traj.hidden = YES; \
-} \
-%new \
-- (void)triggerBreakToWinNow { \
-	executeBreakToOneTurnWin(self); \
-} \
-%new \
-- (void)instantWinPoolGame { \
-	@try { \
-		if ([self respondsToSelector:@selector(showWin)]) { \
-			[self showWin]; \
-		} \
-	} @catch (id ex) {} \
-} \
-%new \
-- (void)autoAimBestBall { \
-	NSArray *balls = nil; \
-	@try { balls = [self valueForKey:@"balls"]; } @catch (id ex) {} \
-	NSArray *pockets = nil; \
-	@try { pockets = [self valueForKey:@"pockets"]; } @catch (id ex) {} \
-	SKNode *cueBall = nil; \
-	for (SKNode *b in balls) { \
-		int num = -1; \
-		@try { num = [[b valueForKey:@"num"] intValue]; } @catch (id ex) {} \
-		if (num == 0) { \
-			cueBall = b; \
-			break; \
-		} \
-	} \
-	if (!cueBall && balls.count > 0) cueBall = balls[0]; \
-	if (!cueBall || !balls || !pockets) return; \
-	CGFloat bestAngle = calculateBestPoolShotAngle(cueBall.position, balls, pockets, 15.0f); \
-	@try { \
-		[self setValue:@(bestAngle) forKey:@"angle"]; \
-	} @catch (id ex) {} \
-	if (poolFullTrajectory) { \
-		updateFullPoolTrajectory(self); \
-	} \
-} \
+// ---- Pool scene shared logic (plain C helpers: Logos directives cannot live inside #define) ----
+static void PoolDidMoveToView(SKScene *scene) {
+	if (disableHardmode) {
+		[scene setValue:@"n" forKey:@"mode"];
+	}
+	if (floatingHUD) {
+		[SeagullHUD attachToView:scene.view gameType:@"8-Ball / 9-Ball Pool" target:scene];
+	}
+}
+
+static void PoolUpdate(SKScene *scene) {
+	if (rgbLine) {
+		SKShapeNode *canvas = nil;
+		@try { canvas = [scene valueForKey:@"canvas"]; } @catch (id ex) {}
+		int hue = 0;
+		@try { hue = [[scene valueForKey:@"currentColorHue"] intValue]; } @catch (id ex) {}
+		hue = (hue + 1) % 360;
+		@try { [scene setValue:@(hue) forKey:@"currentColorHue"]; } @catch (id ex) {}
+		if (canvas) {
+			[canvas setStrokeColor:[UIColor colorWithHue:hue/360.0 saturation:1.0 brightness:1.0 alpha:1.0]];
+		}
+	}
+	if (alwaysMoveCueBall) {
+		[scene setValue:@(true) forKey:@"move_white"];
+	}
+	if (poolPocketAssist) {
+		@try {
+			NSArray *balls = [scene valueForKey:@"balls"];
+			NSArray *pockets = [scene valueForKey:@"pockets"];
+			if (balls && pockets) {
+				for (SKNode *b in balls) {
+					if (!b.physicsBody) { continue; }
+					CGVector vel = b.physicsBody.velocity;
+					CGFloat speed = hypot(vel.dx, vel.dy);
+					if (speed > 5.0f && speed < 800.0f) {
+						CGPoint p = applyPoolPocketMagnet(b.position, CGPointMake(vel.dx, vel.dy), pockets, 40.0f);
+						b.physicsBody.velocity = CGVectorMake(p.x, p.y);
+					}
+				}
+			}
+		} @catch (id ex) {}
+	}
+}
+
+static void PoolHideTraj(SKScene *scene) {
+	SKNode *traj = [scene childNodeWithName:@"gp_full_pool_traj"];
+	if (traj) traj.hidden = YES;
+}
+
+static void PoolAutoAimBestBall(SKScene *scene) {
+	NSArray *balls = nil;
+	@try { balls = [scene valueForKey:@"balls"]; } @catch (id ex) {}
+	NSArray *pockets = nil;
+	@try { pockets = [scene valueForKey:@"pockets"]; } @catch (id ex) {}
+	SKNode *cueBall = nil;
+	for (SKNode *b in balls) {
+		int num = -1;
+		@try { num = [[b valueForKey:@"num"] intValue]; } @catch (id ex) {}
+		if (num == 0) {
+			cueBall = b;
+			break;
+		}
+	}
+	if (!cueBall && balls.count > 0) cueBall = balls[0];
+	if (!cueBall || !balls || !pockets) return;
+	CGFloat bestAngle = calculateBestPoolShotAngle(cueBall.position, balls, pockets, 15.0f);
+	@try {
+		[scene setValue:@(bestAngle) forKey:@"angle"];
+	} @catch (id ex) {}
+	if (poolFullTrajectory) {
+		updateFullPoolTrajectory(scene);
+	}
+}
+
+static void PoolInstantWin(SKScene *scene) {
+	@try {
+		if ([scene respondsToSelector:@selector(showWin)]) {
+			[(id)scene showWin];
+		}
+	} @catch (id ex) {}
+}
+
+%hook PoolScene
+%property (nonatomic) int currentColorHue;
+%property (nonatomic, retain) SKShapeNode *fullTrajNode;
+- (void)didMoveToView:(id)arg1 {
+	%orig;
+	PoolDidMoveToView(self);
+}
+- (void)update:(double)arg1 {
+	%orig;
+	PoolUpdate(self);
+}
+- (void)mMove {
+	%orig;
+	if (poolFullTrajectory) {
+		updateFullPoolTrajectory(self);
+	}
+}
+- (void)shoot:(float)angle power:(float)power spin_x:(float)spin_x spin_y:(float)spin_y save:(BOOL)save {
+	if (poolBreakToOneTurnWin) {
+		executeBreakToOneTurnWin(self);
+	}
+	%orig;
+	PoolHideTraj(self);
+}
+- (void)touchUpAtPoint:(CGPoint)arg1 {
+	if (poolBreakToOneTurnWin) {
+		executeBreakToOneTurnWin(self);
+	}
+	%orig;
+	PoolHideTraj(self);
+}
+%new
+- (void)triggerBreakToWinNow {
+	executeBreakToOneTurnWin(self);
+}
+%new
+- (void)instantWinPoolGame {
+	PoolInstantWin(self);
+}
+%new
+- (void)autoAimBestBall {
+	PoolAutoAimBestBall(self);
+}
 %end
 
-IMPLEMENT_POOL_SCENE(PoolScene)
-IMPLEMENT_POOL_SCENE(PoolScene2)
-IMPLEMENT_POOL_SCENE(PoolScene3)
+%hook PoolScene2
+%property (nonatomic) int currentColorHue;
+%property (nonatomic, retain) SKShapeNode *fullTrajNode;
+- (void)didMoveToView:(id)arg1 {
+	%orig;
+	PoolDidMoveToView(self);
+}
+- (void)update:(double)arg1 {
+	%orig;
+	PoolUpdate(self);
+}
+- (void)mMove {
+	%orig;
+	if (poolFullTrajectory) {
+		updateFullPoolTrajectory(self);
+	}
+}
+- (void)shoot:(float)angle power:(float)power spin_x:(float)spin_x spin_y:(float)spin_y save:(BOOL)save {
+	if (poolBreakToOneTurnWin) {
+		executeBreakToOneTurnWin(self);
+	}
+	%orig;
+	PoolHideTraj(self);
+}
+- (void)touchUpAtPoint:(CGPoint)arg1 {
+	if (poolBreakToOneTurnWin) {
+		executeBreakToOneTurnWin(self);
+	}
+	%orig;
+	PoolHideTraj(self);
+}
+%new
+- (void)triggerBreakToWinNow {
+	executeBreakToOneTurnWin(self);
+}
+%new
+- (void)instantWinPoolGame {
+	PoolInstantWin(self);
+}
+%new
+- (void)autoAimBestBall {
+	PoolAutoAimBestBall(self);
+}
+%end
+
+%hook PoolScene3
+%property (nonatomic) int currentColorHue;
+%property (nonatomic, retain) SKShapeNode *fullTrajNode;
+- (void)didMoveToView:(id)arg1 {
+	%orig;
+	PoolDidMoveToView(self);
+}
+- (void)update:(double)arg1 {
+	%orig;
+	PoolUpdate(self);
+}
+- (void)mMove {
+	%orig;
+	if (poolFullTrajectory) {
+		updateFullPoolTrajectory(self);
+	}
+}
+- (void)shoot:(float)angle power:(float)power spin_x:(float)spin_x spin_y:(float)spin_y save:(BOOL)save {
+	if (poolBreakToOneTurnWin) {
+		executeBreakToOneTurnWin(self);
+	}
+	%orig;
+	PoolHideTraj(self);
+}
+- (void)touchUpAtPoint:(CGPoint)arg1 {
+	if (poolBreakToOneTurnWin) {
+		executeBreakToOneTurnWin(self);
+	}
+	%orig;
+	PoolHideTraj(self);
+}
+%new
+- (void)triggerBreakToWinNow {
+	executeBreakToOneTurnWin(self);
+}
+%new
+- (void)instantWinPoolGame {
+	PoolInstantWin(self);
+}
+%new
+- (void)autoAimBestBall {
+	PoolAutoAimBestBall(self);
+}
+%end
 
 %hook TanksWind
 - (void)setWind:(float)arg1 {
@@ -1268,61 +1375,66 @@ static BeerView *gCurrentBeerView = nil;
 }
 %end
 
-#define IMPLEMENT_CONNECT_SCENE(SceneClass) \
-%hook SceneClass \
-- (void)didMoveToView:(id)arg1 { \
-	%orig; \
-	if (floatingHUD) { \
-		[SeagullHUD attachToView:self.view gameType:@"Connect 4" target:self]; \
-	} \
-} \
-- (void)update:(double)arg1 { \
-	%orig; \
-	if (!connect4Overlay) return; \
-	[self updateMinimaxOverlay]; \
-} \
-%new \
-- (void)updateMinimaxOverlay { \
-	NSArray *gridArr = nil; \
-	@try { gridArr = [self valueForKey:@"grid"]; } @catch (id ex) {} \
-	int grid[6][7] = {0}; \
-	if (gridArr && gridArr.count >= 6) { \
-		for (int r = 0; r < 6; r++) { \
-			NSArray *row = gridArr[r]; \
-			for (int c = 0; c < 7 && c < (int)row.count; c++) { \
-				grid[r][c] = [row[c] intValue]; \
-			} \
-		} \
-	} \
-	Connect4Evaluation eval = evaluateConnect4Grid(grid, 1); \
-	for (int c = 0; c < 7; c++) { \
-		NSString *nodeName = [NSString stringWithFormat:@"c4_ind_%d", c]; \
-		SKLabelNode *lbl = (SKLabelNode *)[self childNodeWithName:nodeName]; \
-		if (!lbl) { \
-			lbl = [SKLabelNode labelNodeWithFontNamed:@"Helvetica-Bold"]; \
-			lbl.name = nodeName; \
-			lbl.fontSize = 18.0; \
-			lbl.zPosition = 999; \
-			[self addChild:lbl]; \
-		} \
-		CGFloat colW = self.size.width / 7.0; \
-		lbl.position = CGPointMake(colW * c + colW * 0.5, self.size.height - 40.0); \
-		if (c == eval.bestColumn) { \
-			lbl.text = @"👑"; \
-			lbl.fontColor = [UIColor greenColor]; \
-		} else if (eval.columnScores[c] == -10000) { \
-			lbl.text = @"💀"; \
-			lbl.fontColor = [UIColor redColor]; \
-		} else { \
-			lbl.text = @"•"; \
-			lbl.fontColor = [UIColor yellowColor]; \
-		} \
-	} \
-} \
-%end
+// ---- Connect 4 shared logic (plain C helpers: Logos directives cannot live inside #define) ----
+static void ConnectDidMoveToView(SKScene *scene, id target) {
+	if (floatingHUD) {
+		[SeagullHUD attachToView:scene.view gameType:@"Connect 4" target:target];
+	}
+}
 
-IMPLEMENT_CONNECT_SCENE(ConnectScene)
-IMPLEMENT_CONNECT_SCENE(FourScene)
+static void ConnectUpdateMinimaxOverlay(SKScene *scene) {
+	NSArray *gridArr = nil;
+	@try { gridArr = [scene valueForKey:@"grid"]; } @catch (id ex) {}
+	int grid[6][7] = {0};
+	if (gridArr && gridArr.count >= 6) {
+		for (int r = 0; r < 6; r++) {
+			NSArray *row = gridArr[r];
+			for (int c = 0; c < 7 && c < (int)row.count; c++) {
+				grid[r][c] = [row[c] intValue];
+			}
+		}
+	}
+	Connect4Evaluation eval = evaluateConnect4Grid(grid, 1);
+	for (int c = 0; c < 7; c++) {
+		NSString *nodeName = [NSString stringWithFormat:@"c4_ind_%d", c];
+		SKLabelNode *lbl = (SKLabelNode *)[scene childNodeWithName:nodeName];
+		if (!lbl) {
+			lbl = [SKLabelNode labelNodeWithFontNamed:@"Helvetica-Bold"];
+			lbl.name = nodeName;
+			lbl.fontSize = 18.0;
+			lbl.zPosition = 999;
+			[scene addChild:lbl];
+		}
+		CGFloat colW = scene.size.width / 7.0;
+		lbl.position = CGPointMake(colW * c + colW * 0.5, scene.size.height - 40.0);
+		if (c == eval.bestColumn) {
+			lbl.text = @"👑";
+			lbl.fontColor = [UIColor greenColor];
+		} else if (eval.columnScores[c] == -10000) {
+			lbl.text = @"💀";
+			lbl.fontColor = [UIColor redColor];
+		} else {
+			lbl.text = @"•";
+			lbl.fontColor = [UIColor yellowColor];
+		}
+	}
+}
+
+%hook ConnectScene
+- (void)didMoveToView:(id)arg1 {
+	%orig;
+	ConnectDidMoveToView(self, self);
+}
+- (void)update:(double)arg1 {
+	%orig;
+	if (!connect4Overlay) return;
+	ConnectUpdateMinimaxOverlay(self);
+}
+%new
+- (void)updateMinimaxOverlay {
+	ConnectUpdateMinimaxOverlay(self);
+}
+%end
 
 %hook MancalaScene
 - (void)didMoveToView:(id)arg1 {
@@ -1416,7 +1528,7 @@ IMPLEMENT_CONNECT_SCENE(FourScene)
 }
 %end
 
-%hook GomokuScene
+%hook RenjuScene
 - (void)didMoveToView:(id)arg1 {
 	%orig;
 	if (floatingHUD) {
@@ -1457,55 +1569,65 @@ IMPLEMENT_CONNECT_SCENE(FourScene)
 }
 %end
 
-#define IMPLEMENT_BASKETBALL_HOOK(SceneClass) \
-%hook SceneClass \
-%property (nonatomic, retain) UIButton *autoBasketButton; \
-- (void)didMoveToView:(id)arg1 { \
-	%orig; \
-	if (floatingHUD) { \
-		[SeagullHUD attachToView:self.view gameType:@"Basketball" target:self]; \
-	} \
-	if (basketAutoSwish) { \
-		CGFloat topInset = 20.0; \
-		if (@available(iOS 11.0, *)) { \
-			topInset = self.view.safeAreaInsets.top + 10.0; \
-		} \
-		self.autoBasketButton = makeButton(@"Auto Swish", CGRectMake([UIScreen mainScreen].bounds.size.width / 2 - 55, topInset, 110, 36), self, @selector(gp_autoSwishShoot)); \
-		[self.view addSubview:self.autoBasketButton]; \
-		[self.view bringSubviewToFront:self.autoBasketButton]; \
-	} \
-} \
-- (void)update:(double)arg1 { \
-	%orig; \
-	if (basketInfiniteTimer) { \
-		@try { \
-			[self setValue:@(60) forKey:@"time"]; \
-			[self setValue:@(60) forKey:@"shot_time"]; \
-		} @catch (id ex) {} \
-	} \
-} \
-%new \
-- (void)gp_autoSwishShoot { \
-	CGPoint startPos = CGPointMake(self.size.width * 0.5, 140.0); \
-	CGPoint hoopPos = CGPointMake(self.size.width * 0.5, self.size.height - 180.0); \
-	if ([self respondsToSelector:@selector(touchDownAtPoint:)]) { \
-		[self touchDownAtPoint:startPos]; \
-		dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.06 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{ \
-			[self touchMovedToPoint:CGPointMake(startPos.x, startPos.y + 60.0)]; \
-			dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.06 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{ \
-				[self touchUpAtPoint:hoopPos]; \
-			}); \
-		}); \
-	} \
-} \
-%new \
-- (void)autoThrowBasket { \
-	[self gp_autoSwishShoot]; \
-} \
-%end
+// ---- Basketball shared logic (plain C helpers: Logos directives cannot live inside #define) ----
+static void BasketballDidMoveToView(SKScene *scene, id target) {
+	if (floatingHUD) {
+		[SeagullHUD attachToView:scene.view gameType:@"Basketball" target:target];
+	}
+	if (basketAutoSwish) {
+		CGFloat topInset = 20.0;
+		if (@available(iOS 11.0, *)) {
+			topInset = scene.view.safeAreaInsets.top + 10.0;
+		}
+		UIButton *btn = makeButton(@"Auto Swish", CGRectMake([UIScreen mainScreen].bounds.size.width / 2 - 55, topInset, 110, 36), target, @selector(gp_autoSwishShoot));
+		@try { [target setValue:btn forKey:@"autoBasketButton"]; } @catch (id ex) {}
+		[scene.view addSubview:btn];
+		[scene.view bringSubviewToFront:btn];
+	}
+}
 
-IMPLEMENT_BASKETBALL_HOOK(BasketballScene)
-IMPLEMENT_BASKETBALL_HOOK(BasketScene)
+static void BasketballUpdate(SKScene *scene) {
+	if (basketInfiniteTimer) {
+		@try {
+			[scene setValue:@(60) forKey:@"time"];
+			[scene setValue:@(60) forKey:@"shot_time"];
+		} @catch (id ex) {}
+	}
+}
+
+static void BasketballAutoSwish(SKScene *scene) {
+	CGPoint startPos = CGPointMake(scene.size.width * 0.5, 140.0);
+	CGPoint hoopPos = CGPointMake(scene.size.width * 0.5, scene.size.height - 180.0);
+	if ([scene respondsToSelector:@selector(touchDownAtPoint:)]) {
+		[(id)scene touchDownAtPoint:startPos];
+		dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.06 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+			[(id)scene touchMovedToPoint:CGPointMake(startPos.x, startPos.y + 60.0)];
+			dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.06 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+				[(id)scene touchUpAtPoint:hoopPos];
+			});
+		});
+	}
+}
+
+%hook BasketballScene
+%property (nonatomic, retain) UIButton *autoBasketButton;
+- (void)didMoveToView:(id)arg1 {
+	%orig;
+	BasketballDidMoveToView(self, self);
+}
+- (void)update:(double)arg1 {
+	%orig;
+	BasketballUpdate(self);
+}
+%new
+- (void)gp_autoSwishShoot {
+	BasketballAutoSwish(self);
+}
+%new
+- (void)autoThrowBasket {
+	BasketballAutoSwish(self);
+}
+%end
 
 %hook TanksScene
 - (void)didMoveToView:(id)arg1 {
@@ -1945,7 +2067,7 @@ IMPLEMENT_BASKETBALL_HOOK(BasketScene)
 		
 		UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"🔍 Secret Word" message:[NSString stringWithFormat:@"The Secret Word is: %@", secret] preferredStyle:UIAlertControllerStyleAlert];
 		[alert addAction:[UIAlertAction actionWithTitle:@"Got it" style:UIAlertActionStyleDefault handler:nil]];
-		UIViewController *root = [UIApplication sharedApplication].keyWindow.rootViewController;
+		UIViewController *root = GSG_keyWindow().rootViewController;
 		[root presentViewController:alert animated:YES completion:nil];
 	} @catch (id ex) {}
 }

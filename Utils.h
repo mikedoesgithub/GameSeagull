@@ -13,6 +13,7 @@ void HookMemory(Class class, SEL selector, uint64_t offset, uint32_t data);
 int PatchMemory(const struct LHMemoryPatch *patches, int count);
 
 // UI Helpers & Alerts
+UIWindow *GSG_keyWindow(void);
 void alert(UIView *object, NSString *title, NSString *message);
 void showWordList(UIView *parentView, NSString *title, NSArray<NSString *> *words);
 UIButton *makeButton(NSString *title, CGRect frame, id target, SEL selector);

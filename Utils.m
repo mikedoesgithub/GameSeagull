@@ -2,6 +2,33 @@
 #import <dlfcn.h>
 #import "substrate.h"
 
+UIWindow *GSG_keyWindow(void) {
+    UIApplication *app = [UIApplication sharedApplication];
+    if (@available(iOS 13.0, *)) {
+        for (UIScene *scene in app.connectedScenes) {
+            if (scene.activationState == UISceneActivationStateForegroundActive &&
+                [scene isKindOfClass:[UIWindowScene class]]) {
+                for (UIWindow *w in ((UIWindowScene *)scene).windows) {
+                    if (w.isKeyWindow) return w;
+                }
+            }
+        }
+        // Fallback: first foreground window scene
+        for (UIScene *scene in app.connectedScenes) {
+            if ([scene isKindOfClass:[UIWindowScene class]]) {
+                UIWindowScene *ws = (UIWindowScene *)scene;
+                if (ws.windows.count > 0) return ws.windows[0];
+            }
+        }
+        return nil;
+    } else {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        return app.keyWindow;
+#pragma clang diagnostic pop
+    }
+}
+
 uint64_t bh_memmem(const uint8_t* haystack, size_t hlen, const uint8_t* needle, size_t nlen) {
     if (nlen == 0 || !haystack || !needle || hlen < nlen) return 0;
     
@@ -64,7 +91,7 @@ void HookMemory(Class class, SEL selector, uint64_t offset, uint32_t data) {
 }
 
 void alert(UIView* object, NSString *title, NSString *message) {
-    UIViewController *vc = object.window.rootViewController ?: [UIApplication sharedApplication].keyWindow.rootViewController;
+    UIViewController *vc = object.window.rootViewController ?: GSG_keyWindow().rootViewController;
     if (!vc) return;
 
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleAlert];
@@ -74,7 +101,7 @@ void alert(UIView* object, NSString *title, NSString *message) {
 }
 
 void showWordList(UIView *parentView, NSString *title, NSArray<NSString *> *words) {
-    UIViewController *rootVC = parentView.window.rootViewController ?: [UIApplication sharedApplication].keyWindow.rootViewController;
+    UIViewController *rootVC = parentView.window.rootViewController ?: GSG_keyWindow().rootViewController;
     if (!rootVC) {
         alert(parentView, title, [words componentsJoinedByString:@"\n"]);
         return;
@@ -1425,7 +1452,7 @@ static CheatSwitchEntry getSwitchEntry(NSInteger section, NSInteger row) {
 
 void presentGameSeagullSettings(UIView *parentView) {
     if (!parentView) return;
-    UIViewController *rootVC = parentView.window.rootViewController ?: [UIApplication sharedApplication].keyWindow.rootViewController;
+    UIViewController *rootVC = parentView.window.rootViewController ?: GSG_keyWindow().rootViewController;
     if (!rootVC) return;
 
     GSPInGameSettingsController *settingsVC = [[GSPInGameSettingsController alloc] initWithStyle:UITableViewStyleInsetGrouped];
