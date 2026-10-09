@@ -58,6 +58,10 @@
 - (void)createMainMenu;
 @end
 
+@interface SettingsScene : SKScene
+- (void)openSettings;
+@end
+
 @interface SeaScene : NSObject
 - (void)autoSinkEnemyFleet;
 @end

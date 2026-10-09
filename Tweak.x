@@ -1446,9 +1446,46 @@ IMPLEMENT_CONNECT_SCENE(FourScene)
 %hook GameIcon
 - (void)setWins:(int)arg1 {
 	NSString *wins = getPreferences()[self._id];
+	if (!wins || wins.length == 0) {
+		wins = [[NSUserDefaults standardUserDefaults] stringForKey:self._id];
+	}
 	%orig(wins.length ? wins.intValue : arg1);
 }
 %end
+
+%hook SettingsScene
+- (void)didMoveToView:(id)arg1 {
+	%orig;
+	if (self.view && ![self.view viewWithTag:99901]) {
+		UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
+		btn.tag = 99901;
+		[btn setTitle:@"🕊️ GameSeagull Settings" forState:UIControlStateNormal];
+		[btn setTitleColor:[UIColor systemBlueColor] forState:UIControlStateNormal];
+		btn.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
+		btn.backgroundColor = [[UIColor secondarySystemBackgroundColor] colorWithAlphaComponent:0.95];
+		btn.layer.cornerRadius = 14;
+		btn.layer.masksToBounds = YES;
+		btn.layer.borderWidth = 1.0;
+		btn.layer.borderColor = [[UIColor systemBlueColor] colorWithAlphaComponent:0.35].CGColor;
+		[btn addTarget:self action:@selector(openSettings) forControlEvents:UIControlEventTouchUpInside];
+		btn.translatesAutoresizingMaskIntoConstraints = NO;
+		[self.view addSubview:btn];
+
+		[NSLayoutConstraint activateConstraints:@[
+			[btn.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
+			[btn.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-24],
+			[btn.widthAnchor constraintEqualToConstant:230],
+			[btn.heightAnchor constraintEqualToConstant:46]
+		]];
+	}
+}
+
+%new
+- (void)openSettings {
+	presentGameSeagullSettings(self.view);
+}
+%end
+
 
 static void loadPrefs(void) {
 	reloadPreferences();

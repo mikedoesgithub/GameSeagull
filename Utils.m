@@ -860,6 +860,285 @@ static SeagullHUD *gSharedHUD = nil;
         [self addToggleWithTitle:@"Word Solvers" key:@"kAutoEnterWords"];
         [self addToggleWithTitle:@"Pool Trajectory" key:@"kPoolFullTrajectory"];
     }
+
+    // Always provide shortcut to Full Settings & Spoof Wins in HUD
+    [self addActionButtonWithTitle:@"Settings & Spoof Wins" icon:@"⚙️" selector:@selector(openSettingsMenu)];
+}
+
+- (void)openSettingsMenu {
+    [self toggleMenu];
+    presentGameSeagullSettings(self.superview ?: self);
 }
 
 @end
+
+// ==================== IN-GAME SETTINGS & WIN SPOOFER ====================
+
+typedef struct {
+    const char *name;
+    const char *key;
+} GameSpoofEntry;
+
+static const GameSpoofEntry kGameSpoofEntries[] = {
+    {"8 Ball", "pool"},
+    {"9 Ball", "pool2"},
+    {"Sea Battle", "sea"},
+    {"Basketball", "basketball"},
+    {"Archery", "archery"},
+    {"Anagrams", "anagrams"},
+    {"Word Hunt", "hunt"},
+    {"Word Bites", "wordbites"},
+    {"Darts", "darts"},
+    {"Cup Pong", "beer"},
+    {"Mini Golf", "golf"},
+    {"Knock Out", "knock"},
+    {"Crazy 8", "crazy"},
+    {"Four in a Row", "connect"},
+    {"Paintball", "paint"},
+    {"Shuffleboard", "suffle"},
+    {"Tanks", "tanks"},
+    {"Filler", "fill"},
+    {"Checkers", "checkers"},
+    {"Chess", "chess"},
+    {"Mancala", "mancala"},
+    {"Gomoku", "renju"},
+    {"Reversi", "reversi"},
+    {"20 Questions", "questions"}
+};
+static const int kGameSpoofCount = sizeof(kGameSpoofEntries) / sizeof(kGameSpoofEntries[0]);
+
+@interface GSPInGameWinSpooferController : UITableViewController <UITextFieldDelegate>
+@end
+
+@implementation GSPInGameWinSpooferController
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.title = @"Spoof Wins";
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"Done" style:UIBarButtonItemStyleDone target:self action:@selector(doneTapped)];
+}
+
+- (void)doneTapped {
+    [self.view endEditing:YES];
+    reloadPreferences();
+    CFNotificationCenterPostNotification(
+        CFNotificationCenterGetDarwinNotifyCenter(),
+        CFSTR("com.fiore.gameseagull.prefs/ReloadPrefs"),
+        NULL, NULL, YES
+    );
+    [self.navigationController popViewControllerAnimated:YES];
+}
+
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
+    return 1;
+}
+
+- (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
+    return @"Enter your desired wins. Leave empty or 0 to display real wins.";
+}
+
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+    return kGameSpoofCount;
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+    static NSString *cellId = @"SpoofCell";
+    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:cellId];
+    if (!cell) {
+        cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:cellId];
+        cell.selectionStyle = UITableViewCellSelectionStyleNone;
+
+        UITextField *tf = [[UITextField alloc] initWithFrame:CGRectMake(0, 0, 100, 32)];
+        tf.textAlignment = NSTextAlignmentRight;
+        tf.keyboardType = UIKeyboardTypeNumberPad;
+        tf.placeholder = @"0";
+        tf.tag = 1001;
+        cell.accessoryView = tf;
+    }
+
+    GameSpoofEntry entry = kGameSpoofEntries[indexPath.row];
+    cell.textLabel.text = [NSString stringWithUTF8String:entry.name];
+
+    UITextField *tf = (UITextField *)cell.accessoryView;
+    NSString *key = [NSString stringWithUTF8String:entry.key];
+
+    NSString *val = [[NSUserDefaults standardUserDefaults] stringForKey:key];
+    if (!val || val.length == 0) {
+        val = getPreferences()[key];
+    }
+    tf.text = (val && [val intValue] > 0) ? val : @"";
+
+    [tf removeTarget:nil action:NULL forControlEvents:UIControlEventAllEvents];
+    [tf addAction:[UIAction actionWithHandler:^(__kindof UIAction * _Nonnull action) {
+        NSString *newVal = tf.text;
+        [[NSUserDefaults standardUserDefaults] setObject:newVal forKey:key];
+        [[NSUserDefaults standardUserDefaults] synchronize];
+        CFPreferencesSetAppValue((__bridge CFStringRef)key, (__bridge CFStringRef)newVal, CFSTR("com.fiore.gameseagull.prefs"));
+        CFPreferencesAppSynchronize(CFSTR("com.fiore.gameseagull.prefs"));
+    }] forControlEvents:UIControlEventEditingChanged];
+
+    return cell;
+}
+
+@end
+
+typedef struct {
+    const char *label;
+    const char *key;
+} CheatSwitchEntry;
+
+@interface GSPInGameSettingsController : UITableViewController
+@end
+
+@implementation GSPInGameSettingsController
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.title = @"GameSeagull";
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"Done" style:UIBarButtonItemStyleDone target:self action:@selector(doneTapped)];
+}
+
+- (void)doneTapped {
+    reloadPreferences();
+    CFNotificationCenterPostNotification(
+        CFNotificationCenterGetDarwinNotifyCenter(),
+        CFSTR("com.fiore.gameseagull.prefs/ReloadPrefs"),
+        NULL, NULL, YES
+    );
+    [self dismissViewControllerAnimated:YES completion:nil];
+}
+
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
+    return 7;
+}
+
+- (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
+    switch (section) {
+        case 0: return @"Profile & Wins";
+        case 1: return @"Universal";
+        case 2: return @"8 Ball & 9 Ball Pool";
+        case 3: return @"Mini Golf";
+        case 4: return @"Word Games";
+        case 5: return @"Board Game AI Solvers";
+        case 6: return @"Action Games";
+        default: return nil;
+    }
+}
+
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+    switch (section) {
+        case 0: return 1; // Spoof Wins
+        case 1: return 1; // Floating HUD
+        case 2: return 6; // Pool
+        case 3: return 4; // Golf
+        case 4: return 3; // Word games
+        case 5: return 4; // Board games
+        case 6: return 13; // Action games
+        default: return 0;
+    }
+}
+
+static CheatSwitchEntry getSwitchEntry(NSInteger section, NSInteger row) {
+    if (section == 1) {
+        CheatSwitchEntry e = {"In-Game Floating Seagull HUD", "kFloatingHUD"};
+        return e;
+    } else if (section == 2) {
+        static const CheatSwitchEntry poolEntries[] = {
+            {"Full Multi-Ball Trajectory", "kPoolFullTrajectory"},
+            {"Break to Win in One Turn", "kPoolBreakToOneTurnWin"},
+            {"Always Move Cue Ball", "kAlwaysMoveCueBall"},
+            {"Extended Trajectory Lines", "kExtendLines"},
+            {"RGB Cue Guide Line", "kRGBLine"},
+            {"Disable Hard Mode", "kDisableHardMode"}
+        };
+        return poolEntries[row];
+    } else if (section == 3) {
+        static const CheatSwitchEntry golfEntries[] = {
+            {"Physics Bounce Map", "kGolfTrajectoryMap"},
+            {"Stealth Hole-In-One", "kGolfAutoPuttStealth"},
+            {"Infinite Golf Shots", "kHoleInOne"},
+            {"Legit Mode (2+ Strokes)", "kGolfLegitMode"}
+        };
+        return golfEntries[row];
+    } else if (section == 4) {
+        static const CheatSwitchEntry wordEntries[] = {
+            {"Word Bites Auto-Solve", "kBitesAutoSolve"},
+            {"Reveal Words Button", "kRevealWords"},
+            {"Auto Enter Words (Anagrams)", "kAutoEnterWords"}
+        };
+        return wordEntries[row];
+    } else if (section == 5) {
+        static const CheatSwitchEntry boardEntries[] = {
+            {"Connect 4 Minimax Guide (👑/💀)", "kConnect4Overlay"},
+            {"Mancala Kalah Free Turn Guide (⭐)", "kMancalaOverlay"},
+            {"Dots & Boxes Safe Line Guide", "kDotsOverlay"},
+            {"Gomoku 5-in-a-Row Threat Scanner", "kGomokuOverlay"}
+        };
+        return boardEntries[row];
+    } else if (section == 6) {
+        static const CheatSwitchEntry actionEntries[] = {
+            {"Sea Battle: See Enemy Ships", "kSeeEnemies"},
+            {"Sea Battle: Auto-Sink Fleet", "kSeaAutoSink"},
+            {"Cup Pong: Auto Shoot Button", "kAutoCupPong"},
+            {"Cup Pong: One Cup Win", "kOneCup"},
+            {"Basketball: Auto Swish", "kBasketAutoSwish"},
+            {"Basketball: Freeze Timer", "kBasketInfiniteTimer"},
+            {"Tanks: Zero Wind", "kTanksDisableWind"},
+            {"Tanks: Persistent Trajectory", "kTanksTrajectory"},
+            {"Darts: Aimbot", "kDartsAimbot"},
+            {"Darts: One Dart Win", "kOneDart"},
+            {"Archery: Disable Wind", "kArcheryDisableWind"},
+            {"Archery: Disable Timer", "kDisableTimer"},
+            {"Archery: Always 50ft Target", "kArchery50ft"}
+        };
+        return actionEntries[row];
+    }
+    CheatSwitchEntry fallback = {"", ""};
+    return fallback;
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+    if (indexPath.section == 0) {
+        UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:nil];
+        cell.textLabel.text = @"🏆 Spoof Wins";
+        cell.detailTextLabel.text = @"Edit Scores";
+        cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+        return cell;
+    }
+
+    CheatSwitchEntry entry = getSwitchEntry(indexPath.section, indexPath.row);
+    UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
+    cell.selectionStyle = UITableViewCellSelectionStyleNone;
+    cell.textLabel.text = [NSString stringWithUTF8String:entry.label];
+
+    UISwitch *sw = [[UISwitch alloc] init];
+    NSString *key = [NSString stringWithUTF8String:entry.key];
+    sw.on = boolForKey(key);
+    sw.onTintColor = [UIColor colorWithRed:0.1 green:0.8 blue:0.95 alpha:1.0];
+    [sw addAction:[UIAction actionWithHandler:^(__kindof UIAction * _Nonnull action) {
+        setBoolForKey(key, sw.isOn);
+    }] forControlEvents:UIControlEventValueChanged];
+
+    cell.accessoryView = sw;
+    return cell;
+}
+
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+    if (indexPath.section == 0 && indexPath.row == 0) {
+        GSPInGameWinSpooferController *spooferVC = [[GSPInGameWinSpooferController alloc] initWithStyle:UITableViewStyleInsetGrouped];
+        [self.navigationController pushViewController:spooferVC animated:YES];
+    }
+}
+
+@end
+
+void presentGameSeagullSettings(UIView *parentView) {
+    if (!parentView) return;
+    UIViewController *rootVC = parentView.window.rootViewController ?: [UIApplication sharedApplication].keyWindow.rootViewController;
+    if (!rootVC) return;
+
+    GSPInGameSettingsController *settingsVC = [[GSPInGameSettingsController alloc] initWithStyle:UITableViewStyleInsetGrouped];
+    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:settingsVC];
+    nav.modalPresentationStyle = UIModalPresentationFormSheet;
+    [rootVC presentViewController:nav animated:YES completion:nil];
+}

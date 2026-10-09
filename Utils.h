@@ -68,4 +68,8 @@ GomokuMove evaluateGomokuGrid(const int grid[15][15], int player);
 + (void)attachToView:(UIView *)parentView gameType:(NSString *)gameType target:(id)target;
 - (void)toggleMenu;
 - (void)updateContentForGame:(NSString *)gameType;
+- (void)openSettingsMenu;
 @end
+
+// In-Game Settings & Win Spoofer Presenter
+void presentGameSeagullSettings(UIView *parentView);
