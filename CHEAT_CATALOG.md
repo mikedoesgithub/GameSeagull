@@ -10,14 +10,14 @@ Legend: ✅ implemented · 🔶 partial · ❌ possible, not yet hooked. Full pe
 - ✅ Implemented **8-Ball / 9-Ball Pool** — `PoolScene, PoolScene2, PoolScene3, PoolBall`
 - ✅ Implemented **Mini Golf** — `GolfScene, GolfScene2, GolfBall`
 - ✅ Implemented **Darts** — `DartsScene, DartsDart`
-- 🔶 Partial **Cup Pong** — `BeerScene, BeerView, BeerCup, BeerBall`
+- ✅ Implemented **Cup Pong** — `BeerScene, BeerView, BeerCup, BeerBall`
 - ✅ Implemented **Tanks** — `TanksScene, TanksWind`
 - ✅ Implemented **Anagrams** — `AnagramsScene`
 - ✅ Implemented **Word Hunt** — `HuntScene`
-- ❌ Not hooked **Word Bites** — `NoodleScene, WordbitsBlock, HuntScene`
+- ✅ Implemented **Word Bites** — `NoodleScene, WordbitsBlock, HuntScene`
 - ✅ Implemented **Sea Battle** — `SeaScene, SeaShip`
 - ✅ Implemented **Basketball** — `BasketballScene`
-- 🔶 Partial **Paintball** — `PaintScene`
+- ✅ Implemented **Paintball** — `PaintScene`
 - ✅ Implemented **Poker** — `PokerScene, PokerCard`
 - ✅ Implemented **Checkers** — `CheckersScene`
 - 🔶 Partial **Chess** — `ChessScene`
@@ -92,11 +92,13 @@ Possible cheats:
 - Direct throw — call `shoot` / `shoot:` with aimbot pos (skips touch path entirely)
 - Start-score rig — KVC `start_score` / `setStart_score:` to lower the required checkout
 
-## 🔶 Partial Cup Pong
+## ✅ Implemented Cup Pong
 Classes: `BeerScene, BeerView, BeerCup, BeerBall`
 Implemented:
-- HUD entry + timer handling
-- `killCup:` / `shootRandomCup` hooks present
+- Ballistic auto-swish solver (nearest live cup, F_x/F_z impulse via SCNPhysicsBody hook)
+- One-cup win (kill all cups)
+- Auto Shoot HUD button
+- Floating HUD
 Possible cheats:
 - Auto-swish solver — compute ballistic impulse from `ball`/`touch_pos`/`vec` ivars, drive `updateThrow`, then `touchDown/Moved/UpAtPoint:` (mirrors golf solver)
 - Cup delete — call `killCup:` / `killCup:feedback:` on every live enemy cup; or KVC `live=NO` on all `BeerCup` nodes
@@ -143,13 +145,13 @@ Possible cheats:
 - Grid intel — `grid_board` / `grid_letters` / `placeGrid:` KVC gives the solver board without OCR
 - Timer freeze — `time_node` / `time_label` KVC pin (board has a timer UI)
 
-## ❌ Not hooked Word Bites
+## ✅ Implemented Word Bites
 Classes: `NoodleScene, WordbitsBlock, HuntScene`
-Implemented: _nothing yet_
+Implemented:
+- Dedicated `NoodleScene` hook (Words/Auto buttons, wordList + words_ar parsing, checkWord submit loop, winGame)
+- HUD Word-branch buttons work as-is (shared selector names)
 Possible cheats:
-- Hook `NoodleScene` (the real Word Bites class in 2.0.13: `answer/blocks/chain/selected/letters/dict` ivars, `WordbitsBlock` tiles) — port the Hunt solver + autosubmit (`enterWord`)
-- Timer freeze — pin `timer_node` / `timer_label` / `start_time`
-- Chain autocomplete — drive `chain`/`selected` KVC, or call `enterWord` per solved word from `words_ar`
+- Remaining: timer freeze via `timer_node`/`start_time` (needs runtime probing); `chain`/`selected` drag synthesis for letter-by-letter play
 - Direct win — `winGame`; score spoof via `saveScore`; free `Shuffle`
 - Note: `HuntScene` absorbed bite helpers (`getBiteGrid:y:`, `setBiteGrid:y:b:`, `iterateCheckBites:index:type:res:`) — alternate hook surface if NoodleScene resists
 
@@ -177,16 +179,19 @@ Possible cheats:
 - Goal trigger — `showGoal` / `closeGoal` sequencing may force make/miss evaluation
 - Board edit — `setBoard:` / `exportBoard:` round-trip (move hoop closer, 'for science')
 
-## 🔶 Partial Paintball
+## ✅ Implemented Paintball
 Classes: `PaintScene`
 Implemented:
 - Enemy ESP (`showEnemy` forced)
-- Auto-aim + auto-fire (`autoAimEnemy` → `meShoot`)
+- 3-round burst auto-aim + auto-fire
+- God mode (`hit_me` no-op, kPaintGodMode)
+- Disarm enemy (`heShoot` no-op, kPaintDisarm)
+- Instant win (`showWin`, HUD button)
 - Floating HUD
 Possible cheats:
 - GOD MODE — no-op `hit_me` (enemy hits never register)
 - ONE-SHOT — call `hit_him` / `dk:strength:` with max strength on every visible enemy
-- INSTANT WIN — call `showWin` (or `checkWin` → win chain)
+- SetWind: zeroing (mirrors Tanks) — NOT hooked yet, one-line addition
 - DISARM ENEMY — no-op `heShoot` / `PlayShoot` / `ActionShoot` so bots can never fire; `Shoot:player:` only for you
 - `nuke` — present on PaintScene too; call it
 - No wind — `SetWind:` zeroed like Tanks (shared codebase)
@@ -210,6 +215,7 @@ Possible cheats:
 Classes: `CheckersScene`
 Implemented:
 - Solver overlay + best-move autoplay (touch synth)
+- Instant win (`testWin`, HUD button)
 - Floating HUD
 Possible cheats:
 - Piece capture — call `Kill:` on any enemy piece directly
@@ -220,8 +226,9 @@ Possible cheats:
 Classes: `ChessScene`
 Implemented:
 - Solver overlay hooks (`didMoveToView:` HUD)
+- Instant win (`testWin`, HUD button)
 Possible cheats:
-- AUTOPLAY (biggest gap) — port Checkers' touch-synth autoplay: evaluate (`clone:` the board for search), then `touchDown/Moved/UpAtPoint:` the best move
+- AUTOPLAY (remaining gap) — port Checkers' touch-synth autoplay: evaluate (`clone:` the board for search), then `touchDown/Moved/UpAtPoint:` the best move
 - Oracle — `inCheck:` / `inCheckMate:` / `inStale:` give exact game-state for a stockfish-lite evaluator
 - Piece remove — `Kill:` any piece; `testWin` force; `showMove:add:pl:` hint injection
 - Promo picker — `promo_piece1/2` ivars: always queen
@@ -230,6 +237,7 @@ Possible cheats:
 Classes: `ReversiScene`
 Implemented:
 - Solver overlay + best-move autoplay
+- Instant win (`testWin`, HUD button)
 - Floating HUD
 Possible cheats:
 - Win force — `testWin`; flip readout via `showMoves:` / `showMove:add:`
@@ -239,18 +247,22 @@ Possible cheats:
 Classes: `ConnectScene`
 Implemented:
 - Minimax/bitboard overlay (👑/💀/• indicators)
+- Autoplay best column (touch synth, HUD button)
+- Instant win (`testWin`, HUD button)
 - Floating HUD
 Possible cheats:
-- AUTOPLAY (gap) — overlay exists but no auto-move: synth `touchDown/UpAtPoint:` on `bestColumn` like Checkers
+- AUTOPLAY — done (touch synth on bestColumn). Remaining: synth `touchDown/UpAtPoint:` on `bestColumn` like Checkers
 - Win force — `testWin`; `playMarker`/`swoosh` effect spoof
 
 ## ✅ Implemented Mancala
 Classes: `MancalaScene`
 Implemented:
 - Kalah engine overlay (free-turn/capture highlights)
+- Autoplay best pit (touch synth, HUD button)
+- Instant win (`testWin`, HUD button)
 - Floating HUD
 Possible cheats:
-- AUTOPLAY (gap) — best-pit touch synth via `touchDown/UpAtPoint:`; `endMove:`/`endMove2:` sequencing
+- AUTOPLAY — done. Remaining: `endMove:`/`endMove2:` sequencing
 - State rig — `setSpot:` / `updateSpot:` / `addSpot:` to rewrite seeds; `afterCapture` trigger
 - Win force — `checkWin`
 
@@ -258,9 +270,10 @@ Possible cheats:
 Classes: `DotsScene`
 Implemented:
 - Chain/double-cross analyzer overlay (safe vs sacrifice lines)
+- Autoplay (capture-first, safe fallback, touch synth, HUD button)
 - Floating HUD
 Possible cheats:
-- AUTOPLAY (gap) — auto-claim `DOTS_MOVE_CAPTURE` lines, safe lines otherwise, via touch synth; `exportLine:`/`exportSquare:` give machine-readable board
+- AUTOPLAY — done. Remaining: `exportLine:`/`exportSquare:` give machine-readable board
 - Win force — `testWin`; `lineExists:` intel for chain counting
 
 ## ✅ Implemented Filler
@@ -277,9 +290,10 @@ Possible cheats:
 Classes: `RenjuScene, RenjuStone`
 Implemented:
 - Threat-scanner overlay (`updateGomokuOverlay`, now on `RenjuScene`)
+- Autoplay best spot (touch synth, HUD button)
 - Floating HUD
 Possible cheats:
-- AUTOPLAY (gap) — touch-synth the `bestRow/bestCol` from `evaluateGomokuGrid`; native `showDanger` can be force-called for free threat display
+- AUTOPLAY — done (touch synth on bestRow/bestCol). Remaining: force-call native `showDanger` for free threat display
 - Stone intel — `pieces`/`map`/`board` KVC + `win_stones`/`win_highlights` for forced-win lines; `replayMove` sequencing
 - Win force — `checkWin`
 

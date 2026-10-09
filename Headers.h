@@ -98,6 +98,9 @@
 
 @interface ConnectScene : SKScene
 - (void)updateMinimaxOverlay;
+- (void)touchDownAtPoint:(CGPoint)pt;
+- (void)touchUpAtPoint:(CGPoint)pt;
+- (void)testWin;
 @end
 
 @interface FourScene : SKScene
@@ -106,15 +109,22 @@
 
 @interface MancalaScene : SKScene
 - (void)updateMancalaOverlay;
+- (void)touchDownAtPoint:(CGPoint)pt;
+- (void)touchUpAtPoint:(CGPoint)pt;
+- (void)testWin;
 @end
 
 @interface DotsScene : SKScene
 - (void)updateDotsOverlay;
+- (void)touchDownAtPoint:(CGPoint)pt;
+- (void)touchUpAtPoint:(CGPoint)pt;
 @end
 
 // 2.2.6 renamed Gomoku -> Renju (board/map/pieces ivars)
 @interface RenjuScene : SKScene
 - (void)updateGomokuOverlay;
+- (void)touchDownAtPoint:(CGPoint)pt;
+- (void)touchUpAtPoint:(CGPoint)pt;
 @end
 
 @interface GomokuScene : SKScene
@@ -180,6 +190,7 @@
 
 @interface TanksScene : SKScene
 @property (nonatomic, retain) SKShapeNode *trajectoryLine;
+- (void)showWin;
 @end
 
 @interface GolfScene : SKScene
@@ -209,6 +220,7 @@
 - (void)checkAttack;
 - (void)updateCheckersOverlay;
 - (void)autoPlayBestCheckersMove;
+- (void)testWin;
 - (void)touchDownAtPoint:(CGPoint)pt;
 - (void)touchMovedToPoint:(CGPoint)pt;
 - (void)touchUpAtPoint:(CGPoint)pt;
@@ -217,12 +229,14 @@
 @interface ChessScene : SKScene
 - (void)showMove:(id)move add:(BOOL)add pl:(int)pl;
 - (void)updateChessOverlay;
+- (void)testWin;
 @end
 
 @interface ReversiScene : SKScene
 - (void)showMoves:(int)player add:(BOOL)add;
 - (void)updateReversiOverlay;
 - (void)autoPlayBestReversiMove;
+- (void)testWin;
 - (void)touchDownAtPoint:(CGPoint)pt;
 - (void)touchUpAtPoint:(CGPoint)pt;
 @end
@@ -238,6 +252,18 @@
 - (void)showEnemy;
 - (void)meShoot;
 - (void)autoAimEnemy;
+- (void)showWin;
+@end
+
+// Word Bites (2.0.13 class; bite helpers also merged into HuntScene)
+@interface NoodleScene : SKScene
+@property (nonatomic, retain) NSArray *words;
+- (void)revealWords:(BOOL)reveal;
+- (void)winGame;
+- (void)revealAllWordsInSheet;
+- (void)solveAndSubmitAllWords;
+- (bool)checkWord:(NSString *)word flag:(bool)flag;
+- (bool)checkWord:(NSString *)word;
 @end
 
 @interface ShuffleScene : SKScene
@@ -245,6 +271,7 @@
 - (void)touchMovedToPoint:(CGPoint)pt;
 - (void)touchUpAtPoint:(CGPoint)pt;
 - (void)launchPerfectPuck;
+- (void)testWin;
 @end
 
 @interface ShuffleScene2 : SKScene
@@ -252,6 +279,7 @@
 - (void)touchMovedToPoint:(CGPoint)pt;
 - (void)touchUpAtPoint:(CGPoint)pt;
 - (void)launchPerfectPuck;
+- (void)testWin;
 @end
 
 @interface CrazyScene : SKScene

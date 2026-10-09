@@ -1106,6 +1106,7 @@ static SeagullHUD *gSharedHUD = nil;
     } else if ([gameType containsString:@"Word"] || [gameType containsString:@"Anagrams"]) {
         [self addActionButtonWithTitle:@"Auto-Solve & Submit" icon:@"⚡" selector:@selector(solveAndSubmitAllWords)];
         [self addActionButtonWithTitle:@"View Full Word List" icon:@"📋" selector:@selector(revealAllWordsInSheet)];
+        [self addActionButtonWithTitle:@"Instant Win" icon:@"🏆" selector:@selector(instantWinAnagrams)];
         [self addToggleWithTitle:@"Auto Enter Words" key:@"kAutoEnterWords"];
         [self addToggleWithTitle:@"Reveal Words Button" key:@"kRevealWords"];
     } else if ([gameType containsString:@"Poker"]) {
@@ -1125,15 +1126,24 @@ static SeagullHUD *gSharedHUD = nil;
         [self addActionButtonWithTitle:@"Auto-Sink Enemy Fleet" icon:@"💥" selector:@selector(autoSinkEnemyFleet)];
         [self addToggleWithTitle:@"ESP Reveal Enemy Ships" key:@"kSeeEnemies"];
     } else if ([gameType containsString:@"Connect"] || [gameType containsString:@"Four"]) {
+        [self addActionButtonWithTitle:@"Auto-Play Best Column" icon:@"👑" selector:@selector(autoPlayBestConnectMove)];
+        [self addActionButtonWithTitle:@"Instant Win" icon:@"🏆" selector:@selector(instantWinConnect)];
         [self addToggleWithTitle:@"AI Minimax Move Guide" key:@"kConnect4Overlay"];
     } else if ([gameType containsString:@"Mancala"]) {
+        [self addActionButtonWithTitle:@"Auto-Play Best Pit" icon:@"⭐" selector:@selector(autoPlayBestMancalaMove)];
+        [self addActionButtonWithTitle:@"Instant Win" icon:@"🏆" selector:@selector(instantWinMancala)];
         [self addToggleWithTitle:@"Kalah Extra Turn Badges" key:@"kMancalaOverlay"];
     } else if ([gameType containsString:@"Dots"]) {
+        [self addActionButtonWithTitle:@"Auto-Play Best Line" icon:@"🟢" selector:@selector(autoPlayBestDotsLine)];
         [self addToggleWithTitle:@"Safe Line Color Guide" key:@"kDotsOverlay"];
+    } else if ([gameType containsString:@"Gomoku"] || [gameType containsString:@"Renju"]) {
+        [self addActionButtonWithTitle:@"Auto-Play Best Spot" icon:@"⭐" selector:@selector(autoPlayBestRenjuMove)];
+        [self addToggleWithTitle:@"5-in-a-Row Threat Scanner" key:@"kGomokuOverlay"];
     } else if ([gameType containsString:@"Basket"]) {
         [self addActionButtonWithTitle:@"Auto-Swish Basket" icon:@"🏀" selector:@selector(gp_autoSwishShoot)];
         [self addToggleWithTitle:@"Freeze Timer" key:@"kBasketInfiniteTimer"];
     } else if ([gameType containsString:@"Tanks"]) {
+        [self addActionButtonWithTitle:@"Instant Win" icon:@"🏆" selector:@selector(instantWinTanks)];
         [self addToggleWithTitle:@"Zero Wind" key:@"kTanksDisableWind"];
         [self addToggleWithTitle:@"Persistent Trajectory" key:@"kTanksTrajectory"];
     } else if ([gameType containsString:@"Darts"]) {
@@ -1144,20 +1154,27 @@ static SeagullHUD *gSharedHUD = nil;
         [self addToggleWithTitle:@"Infinite Timer" key:@"kDisableTimer"];
     } else if ([gameType containsString:@"Checkers"]) {
         [self addActionButtonWithTitle:@"Auto-Play Best Jump" icon:@"👑" selector:@selector(autoPlayBestCheckersMove)];
+        [self addActionButtonWithTitle:@"Instant Win" icon:@"🏆" selector:@selector(instantWinCheckers)];
         [self addToggleWithTitle:@"Move Guide Overlay" key:@"kCheckersOverlay"];
     } else if ([gameType containsString:@"Chess"]) {
+        [self addActionButtonWithTitle:@"Instant Win" icon:@"🏆" selector:@selector(instantWinChess)];
         [self addToggleWithTitle:@"AI Best Move Hint" key:@"kChessOverlay"];
     } else if ([gameType containsString:@"Reversi"]) {
         [self addActionButtonWithTitle:@"Auto-Play Best Move" icon:@"⭐" selector:@selector(autoPlayBestReversiMove)];
+        [self addActionButtonWithTitle:@"Instant Win" icon:@"🏆" selector:@selector(instantWinReversi)];
         [self addToggleWithTitle:@"Corner & Mobility Heatmap" key:@"kReversiOverlay"];
     } else if ([gameType containsString:@"Fill"]) {
         [self addActionButtonWithTitle:@"Auto-Pick Best Color" icon:@"🎨" selector:@selector(autoPickBestColor)];
         [self addActionButtonWithTitle:@"Instant Win" icon:@"🏆" selector:@selector(instantWin)];
     } else if ([gameType containsString:@"Paint"]) {
         [self addActionButtonWithTitle:@"Auto-Aim Enemy" icon:@"🎯" selector:@selector(autoAimEnemy)];
+        [self addActionButtonWithTitle:@"Instant Win" icon:@"🏆" selector:@selector(instantWinPaint)];
         [self addToggleWithTitle:@"ESP Reveal Enemy" key:@"kPaintESP"];
+        [self addToggleWithTitle:@"God Mode (ignore hits)" key:@"kPaintGodMode"];
+        [self addToggleWithTitle:@"Disarm Enemy" key:@"kPaintDisarm"];
     } else if ([gameType containsString:@"Shuffle"]) {
         [self addActionButtonWithTitle:@"Perfect 3-Point Shot" icon:@"🎯" selector:@selector(launchPerfectPuck)];
+        [self addActionButtonWithTitle:@"Instant Win" icon:@"🏆" selector:@selector(instantWinShuffle)];
     } else if ([gameType containsString:@"Crazy"]) {
         [self addActionButtonWithTitle:@"Instant Win" icon:@"🏆" selector:@selector(instantWin)];
     } else if ([gameType containsString:@"Knock"]) {

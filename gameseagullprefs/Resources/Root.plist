@@ -13,37 +13,37 @@
 			<string>com.fiore.gameseagull</string>
 			<key>packageNameOverride</key>
 			<string>GameSeagull</string>
-			<key>titleColor</key>
-			<string>#ff99b1</string>
 			<key>subtitleColor</key>
 			<string>#aaaaaa</string>
+			<key>titleColor</key>
+			<string>#ff99b1</string>
 		</dict>
 		<dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>
-			<key>label</key>
-			<string>Universal Controls</string>
 			<key>footerText</key>
 			<string>Displays a draggable floating 🕊️ HUD inside all GamePigeon games to toggle cheats and run solvers without leaving iMessage.</string>
+			<key>label</key>
+			<string>Universal Controls</string>
 		</dict>
 		<dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
-			<key>defaults</key>
-			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kFloatingHUD</string>
 			<key>default</key>
 			<true/>
-			<key>label</key>
-			<string>In-Game Floating Seagull HUD</string>
+			<key>defaults</key>
+			<string>com.fiore.gameseagull.prefs</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>sparkles.rectangle.stack.fill</string>
 			</dict>
-			<key>PostNotification</key>
-			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+			<key>key</key>
+			<string>kFloatingHUD</string>
+			<key>label</key>
+			<string>In-Game Floating Seagull HUD</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -56,30 +56,30 @@
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
+			<key>iconImageSystem</key>
+			<dict>
+				<key>name</key>
+				<string>wind</string>
+			</dict>
 			<key>key</key>
 			<string>kArcheryDisableWind</string>
 			<key>label</key>
 			<string>Disable Wind</string>
-			<key>iconImageSystem</key>
-            <dict>
-                <key>name</key>
-                <string>wind</string>
-            </dict>
 		</dict>
 		<dict>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kDisableTimer</string>
-			<key>label</key>
-			<string>Disable Timer</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>clock.badge.xmark</string>
 			</dict>
+			<key>key</key>
+			<string>kDisableTimer</string>
+			<key>label</key>
+			<string>Disable Timer</string>
 			<key>pl_filter</key>
 			<dict>
 				<key>CoreFoundationVersion</key>
@@ -93,15 +93,15 @@
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kDisableTimer</string>
-			<key>label</key>
-			<string>Disable Timer</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>clock</string>
 			</dict>
+			<key>key</key>
+			<string>kDisableTimer</string>
+			<key>label</key>
+			<string>Disable Timer</string>
 			<key>pl_filter</key>
 			<dict>
 				<key>CoreFoundationVersion</key>
@@ -116,15 +116,15 @@
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
+			<key>iconImageSystem</key>
+			<dict>
+				<key>name</key>
+				<string>50.circle</string>
+			</dict>
 			<key>key</key>
 			<string>kArchery50ft</string>
 			<key>label</key>
 			<string>Always 50ft Target</string>
-			<key>iconImageSystem</key>
-            <dict>
-                <key>name</key>
-                <string>50.circle</string>
-            </dict>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -137,126 +137,126 @@
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kExtendLines</string>
-			<key>label</key>
-			<string>Extend Lines</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>arrow.up.forward</string>
 			</dict>
+			<key>key</key>
+			<string>kExtendLines</string>
+			<key>label</key>
+			<string>Extend Lines</string>
 		</dict>
 		<dict>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kDisableHardMode</string>
-			<key>label</key>
-			<string>Disable Hard Mode</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>shield.slash</string>
 			</dict>
+			<key>key</key>
+			<string>kDisableHardMode</string>
+			<key>label</key>
+			<string>Disable Hard Mode</string>
 		</dict>
 		<dict>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kAlwaysShowLines</string>
-			<key>label</key>
-			<string>Always Show Lines</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>line.diagonal</string>
 			</dict>
+			<key>key</key>
+			<string>kAlwaysShowLines</string>
+			<key>label</key>
+			<string>Always Show Lines</string>
 		</dict>
 		<dict>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kRGBLine</string>
-			<key>label</key>
-			<string>RGB Lines</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>paintpalette</string>
 			</dict>
+			<key>key</key>
+			<string>kRGBLine</string>
+			<key>label</key>
+			<string>RGB Lines</string>
 		</dict>
 		<dict>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kAlwaysMoveCueBall</string>
-			<key>label</key>
-			<string>Always Move Cue Ball *</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>arrow.up.and.down.and.arrow.left.and.right</string>
 			</dict>
+			<key>key</key>
+			<string>kAlwaysMoveCueBall</string>
+			<key>label</key>
+			<string>Always Move Cue Ball *</string>
 		</dict>
 		<dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kPoolBankShots</string>
-			<key>label</key>
-			<string>Cushion Bank Lines</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>arrow.triangle.swap</string>
 			</dict>
-			<key>PostNotification</key>
-			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+			<key>key</key>
+			<string>kPoolBankShots</string>
+			<key>label</key>
+			<string>Cushion Bank Lines</string>
 		</dict>
 		<dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kPoolFullTrajectory</string>
-			<key>label</key>
-			<string>Full Multi-Ball Trajectory</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>circle.hexagongrid.fill</string>
 			</dict>
-			<key>PostNotification</key>
-			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+			<key>key</key>
+			<string>kPoolFullTrajectory</string>
+			<key>label</key>
+			<string>Full Multi-Ball Trajectory</string>
 		</dict>
 		<dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kPoolBreakToOneTurnWin</string>
-			<key>label</key>
-			<string>Break to Win in One Turn *</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>bolt.circle.fill</string>
 			</dict>
-			<key>PostNotification</key>
-			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+			<key>key</key>
+			<string>kPoolBreakToOneTurnWin</string>
+			<key>label</key>
+			<string>Break to Win in One Turn *</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -269,30 +269,30 @@
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kOneDart</string>
-			<key>label</key>
-			<string>One Dart Win *</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>target</string>
 			</dict>
+			<key>key</key>
+			<string>kOneDart</string>
+			<key>label</key>
+			<string>One Dart Win *</string>
 		</dict>
 		<dict>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kDartsAimbot</string>
-			<key>label</key>
-			<string>Aimbot</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>scope</string>
 			</dict>
+			<key>key</key>
+			<string>kDartsAimbot</string>
+			<key>label</key>
+			<string>Aimbot</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -301,38 +301,38 @@
 			<string>Tanks</string>
 		</dict>
 		<dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kTanksDisableWind</string>
-			<key>label</key>
-			<string>Disable Wind</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>wind</string>
 			</dict>
-			<key>PostNotification</key>
-			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+			<key>key</key>
+			<string>kTanksDisableWind</string>
+			<key>label</key>
+			<string>Disable Wind</string>
 		</dict>
 		<dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kTanksTrajectory</string>
-			<key>label</key>
-			<string>Show Trajectory Guide</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>point.topleft.down.curvedto.point.bottomright.up</string>
 			</dict>
-			<key>PostNotification</key>
-			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+			<key>key</key>
+			<string>kTanksTrajectory</string>
+			<key>label</key>
+			<string>Show Trajectory Guide</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -341,72 +341,72 @@
 			<string>Mini Golf</string>
 		</dict>
 		<dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kGolfTrajectoryMap</string>
-			<key>label</key>
-			<string>Full Trajectory / Bounce Map</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>point.topleft.down.curvedto.point.bottomright.up</string>
 			</dict>
-			<key>PostNotification</key>
-			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+			<key>key</key>
+			<string>kGolfTrajectoryMap</string>
+			<key>label</key>
+			<string>Full Trajectory / Bounce Map</string>
 		</dict>
 		<dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kGolfAutoPuttStealth</string>
-			<key>label</key>
-			<string>Stealth Auto Hole-in-One</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>sparkles</string>
 			</dict>
-			<key>PostNotification</key>
-			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+			<key>key</key>
+			<string>kGolfAutoPuttStealth</string>
+			<key>label</key>
+			<string>Stealth Auto Hole-in-One</string>
 		</dict>
 		<dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kGolfLegitMode</string>
-			<key>label</key>
-			<string>Legit Mode (Sink on Stroke 2+)</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>checkmark.shield</string>
 			</dict>
-			<key>PostNotification</key>
-			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+			<key>key</key>
+			<string>kGolfLegitMode</string>
+			<key>label</key>
+			<string>Legit Mode (Sink on Stroke 2+)</string>
 		</dict>
 		<dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kHoleInOne</string>
-			<key>label</key>
-			<string>Always Hole in One *</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>figure.golf</string>
 			</dict>
-			<key>PostNotification</key>
-			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+			<key>key</key>
+			<string>kHoleInOne</string>
+			<key>label</key>
+			<string>Always Hole in One *</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -415,38 +415,38 @@
 			<string>Basketball</string>
 		</dict>
 		<dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kBasketAutoSwish</string>
-			<key>label</key>
-			<string>Auto Swish Button</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>circle.circle</string>
 			</dict>
-			<key>PostNotification</key>
-			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+			<key>key</key>
+			<string>kBasketAutoSwish</string>
+			<key>label</key>
+			<string>Auto Swish Button</string>
 		</dict>
 		<dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kBasketInfiniteTimer</string>
-			<key>label</key>
-			<string>Freeze Shot Clock</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>timer</string>
 			</dict>
-			<key>PostNotification</key>
-			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+			<key>key</key>
+			<string>kBasketInfiniteTimer</string>
+			<key>label</key>
+			<string>Freeze Shot Clock</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -459,30 +459,30 @@
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kOneCup</string>
-			<key>label</key>
-			<string>One Cup Win *</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>circle.fill</string>
 			</dict>
+			<key>key</key>
+			<string>kOneCup</string>
+			<key>label</key>
+			<string>One Cup Win *</string>
 		</dict>
 		<dict>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kAutoCupPong</string>
-			<key>label</key>
-			<string>Auto Shoot Button</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>a.circle</string>
 			</dict>
+			<key>key</key>
+			<string>kAutoCupPong</string>
+			<key>label</key>
+			<string>Auto Shoot Button</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -495,85 +495,85 @@
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kRevealWords</string>
-			<key>label</key>
-			<string>Reveal Words</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>character.book.closed</string>
 			</dict>
+			<key>key</key>
+			<string>kRevealWords</string>
+			<key>label</key>
+			<string>Reveal Words</string>
 		</dict>
 		<dict>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kAutoEnterWords</string>
-			<key>label</key>
-			<string>Auto Enter Words (Anagrams)</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>rectangle.and.pencil.and.ellipsis</string>
 			</dict>
+			<key>key</key>
+			<string>kAutoEnterWords</string>
+			<key>label</key>
+			<string>Auto Enter Words (Anagrams)</string>
 		</dict>
 		<dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kBitesAutoSolve</string>
-			<key>label</key>
-			<string>Word Bites Auto-Solve</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>text.badge.checkmark</string>
 			</dict>
-			<key>PostNotification</key>
-			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+			<key>key</key>
+			<string>kBitesAutoSolve</string>
+			<key>label</key>
+			<string>Word Bites Auto-Solve</string>
 		</dict>
 		<dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
-			<string>Sea Battle</string>
+			<string>Shuffleboard 3-Point Guide</string>
 		</dict>
 		<dict>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kSeeEnemies</string>
-			<key>label</key>
-			<string>See Enemy Ships</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>eye</string>
 			</dict>
+			<key>key</key>
+			<string>kSeeEnemies</string>
+			<key>label</key>
+			<string>See Enemy Ships</string>
 		</dict>
 		<dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kSeaAutoSink</string>
-			<key>label</key>
-			<string>Auto-Sink Enemy Fleet *</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>flame.fill</string>
 			</dict>
-			<key>PostNotification</key>
-			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+			<key>key</key>
+			<string>kSeaAutoSink</string>
+			<key>label</key>
+			<string>Auto-Sink Enemy Fleet *</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -582,208 +582,246 @@
 			<string>Board Game AI Solvers</string>
 		</dict>
 		<dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kConnect4Overlay</string>
-			<key>label</key>
-			<string>Connect 4 Minimax Guide (👑/💀/•)</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>circle.grid.3x3.fill</string>
 			</dict>
-			<key>PostNotification</key>
-			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+			<key>key</key>
+			<string>kConnect4Overlay</string>
+			<key>label</key>
+			<string>Connect 4 Minimax Guide (👑/💀/•)</string>
 		</dict>
 		<dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kMancalaOverlay</string>
-			<key>label</key>
-			<string>Mancala Kalah Free Turn Guide (⭐/🎯)</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>star.circle.fill</string>
 			</dict>
-			<key>PostNotification</key>
-			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+			<key>key</key>
+			<string>kMancalaOverlay</string>
+			<key>label</key>
+			<string>Mancala Kalah Free Turn Guide (⭐/🎯)</string>
 		</dict>
 		<dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kDotsOverlay</string>
-			<key>label</key>
-			<string>Dots &amp; Boxes Safe Lines (🟢/🔵/🔴)</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>square.split.2x2.fill</string>
 			</dict>
-			<key>PostNotification</key>
-			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+			<key>key</key>
+			<string>kDotsOverlay</string>
+			<key>label</key>
+			<string>Dots &amp; Boxes Safe Lines (🟢/🔵/🔴)</string>
 		</dict>
 		<dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kGomokuOverlay</string>
-			<key>label</key>
-			<string>Gomoku 5-in-a-Row Threat Scanner</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>target</string>
 			</dict>
-			<key>PostNotification</key>
-			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+			<key>key</key>
+			<string>kGomokuOverlay</string>
+			<key>label</key>
+			<string>Gomoku 5-in-a-Row Threat Scanner</string>
 		</dict>
 		<dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kCheckersOverlay</string>
-			<key>label</key>
-			<string>Checkers AI Jump &amp; King Guide</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>crown.fill</string>
 			</dict>
-			<key>PostNotification</key>
-			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+			<key>key</key>
+			<string>kCheckersOverlay</string>
+			<key>label</key>
+			<string>Checkers AI Jump &amp; King Guide</string>
 		</dict>
 		<dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kReversiOverlay</string>
-			<key>label</key>
-			<string>Reversi Corner &amp; Mobility Heatmap</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>circle.grid.3x3.fill</string>
 			</dict>
-			<key>PostNotification</key>
-			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+			<key>key</key>
+			<string>kReversiOverlay</string>
+			<key>label</key>
+			<string>Reversi Corner &amp; Mobility Heatmap</string>
 		</dict>
 		<dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kChessOverlay</string>
-			<key>label</key>
-			<string>Chess Move Quality Indicator</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>shield.fill</string>
 			</dict>
-			<key>PostNotification</key>
-			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+			<key>key</key>
+			<string>kChessOverlay</string>
+			<key>label</key>
+			<string>Chess Move Quality Indicator</string>
 		</dict>
 		<dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kFillOverlay</string>
-			<key>label</key>
-			<string>Filler Best Color Guide</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>paintpalette.fill</string>
 			</dict>
-			<key>PostNotification</key>
-			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+			<key>key</key>
+			<string>kFillOverlay</string>
+			<key>label</key>
+			<string>Filler Best Color Guide</string>
 		</dict>
 		<dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kPaintESP</string>
-			<key>label</key>
-			<string>Paintball ESP Enemy Reveal</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>eye.fill</string>
 			</dict>
-			<key>PostNotification</key>
-			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+			<key>key</key>
+			<string>kPaintESP</string>
+			<key>label</key>
+			<string>Paintball ESP Enemy Reveal</string>
 		</dict>
 		<dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>com.fiore.gameseagull.prefs</string>
+			<key>iconImageSystem</key>
+			<dict>
+				<key>name</key>
+				<string>shield.fill</string>
+			</dict>
+			<key>key</key>
+			<string>kPaintGodMode</string>
+			<key>label</key>
+			<string>Paintball God Mode (ignore hits)</string>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>com.fiore.gameseagull.prefs</string>
+			<key>iconImageSystem</key>
+			<dict>
+				<key>name</key>
+				<string>nosign</string>
+			</dict>
+			<key>key</key>
+			<string>kPaintDisarm</string>
+			<key>label</key>
+			<string>Paintball Disarm Enemy (no return fire)</string>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kShuffleGuide</string>
-			<key>label</key>
-			<string>Shuffleboard 3-Point Guide</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>arrow.up.circle.fill</string>
 			</dict>
-			<key>PostNotification</key>
-			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+			<key>key</key>
+			<string>kShuffleGuide</string>
+			<key>label</key>
+			<string>Shuffleboard 3-Point Guide</string>
 		</dict>
 		<dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kKnockSuperImpulse</string>
-			<key>label</key>
-			<string>Knockout Super Impulse Puck</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>bolt.fill</string>
 			</dict>
-			<key>PostNotification</key>
-			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+			<key>key</key>
+			<string>kKnockSuperImpulse</string>
+			<key>label</key>
+			<string>Knockout Super Impulse Puck</string>
 		</dict>
 		<dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kPoolPocketAssist</string>
-			<key>label</key>
-			<string>Pool Pocket Magnet Assist</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>circle.circle.fill</string>
 			</dict>
-			<key>PostNotification</key>
-			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+			<key>key</key>
+			<string>kPoolPocketAssist</string>
+			<key>label</key>
+			<string>Pool Pocket Magnet Assist</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -792,21 +830,21 @@
 			<string>Texas Hold'em Poker</string>
 		</dict>
 		<dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kPokerCardESP</string>
-			<key>label</key>
-			<string>Reveal Opponent Cards (ESP)</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>eye.fill</string>
 			</dict>
-			<key>PostNotification</key>
-			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+			<key>key</key>
+			<string>kPokerCardESP</string>
+			<key>label</key>
+			<string>Reveal Opponent Cards (ESP)</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -815,21 +853,21 @@
 			<string>20 Questions</string>
 		</dict>
 		<dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>defaults</key>
 			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kQuestionsESP</string>
-			<key>label</key>
-			<string>Secret Word ESP</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>text.magnifyingglass</string>
 			</dict>
-			<key>PostNotification</key>
-			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+			<key>key</key>
+			<string>kQuestionsESP</string>
+			<key>label</key>
+			<string>Secret Word ESP</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -838,8 +876,6 @@
 		<dict>
 			<key>cell</key>
 			<string>PSLinkListCell</string>
-			<key>label</key>
-			<string>Spoof Wins</string>
 			<key>detail</key>
 			<string>GSPWinSpooferController</string>
 			<key>iconImageSystem</key>
@@ -847,85 +883,87 @@
 				<key>name</key>
 				<string>crown</string>
 			</dict>
+			<key>label</key>
+			<string>Spoof Wins</string>
 		</dict>
 		<dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>
-			<key>label</key>
-			<string>Unlockables (Skins, Reveals, Ads)</string>
 			<key>footerText</key>
 			<string>Flips the game's local entitlement checks: all avatar/skin packs read as owned, reveal consumables never run out, ads never show.</string>
+			<key>label</key>
+			<string>Unlockables (Skins, Reveals, Ads)</string>
 		</dict>
 		<dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
-			<key>defaults</key>
-			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kUnlockAllContent</string>
 			<key>default</key>
 			<true/>
-			<key>label</key>
-			<string>Unlock All Skins &amp; Packs</string>
+			<key>defaults</key>
+			<string>com.fiore.gameseagull.prefs</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>lock.open.fill</string>
 			</dict>
-			<key>PostNotification</key>
-			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+			<key>key</key>
+			<string>kUnlockAllContent</string>
+			<key>label</key>
+			<string>Unlock All Skins &amp; Packs</string>
 		</dict>
 		<dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
-			<key>defaults</key>
-			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kInfiniteReveals</string>
 			<key>default</key>
 			<true/>
-			<key>label</key>
-			<string>Infinite Reveals</string>
+			<key>defaults</key>
+			<string>com.fiore.gameseagull.prefs</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>eye.fill</string>
 			</dict>
-			<key>PostNotification</key>
-			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+			<key>key</key>
+			<string>kInfiniteReveals</string>
+			<key>label</key>
+			<string>Infinite Reveals</string>
 		</dict>
 		<dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
-			<key>defaults</key>
-			<string>com.fiore.gameseagull.prefs</string>
-			<key>key</key>
-			<string>kNoAds</string>
 			<key>default</key>
 			<true/>
-			<key>label</key>
-			<string>Remove Ads</string>
+			<key>defaults</key>
+			<string>com.fiore.gameseagull.prefs</string>
 			<key>iconImageSystem</key>
 			<dict>
 				<key>name</key>
 				<string>megaphone.slash.fill</string>
 			</dict>
-			<key>PostNotification</key>
-			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+			<key>key</key>
+			<string>kNoAds</string>
+			<key>label</key>
+			<string>Remove Ads</string>
 		</dict>
 		<dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>
-			<key>label</key>
-			<string>Misc</string>
 			<key>footerText</key>
 			<string>* Extremely Suspicious to your Opponent</string>
+			<key>label</key>
+			<string>Misc</string>
 		</dict>
 		<dict>
-			<key>cellClass</key>
-			<string>HBLinkTableCell</string>
 			<key>cell</key>
 			<string>PSButtonCell</string>
+			<key>cellClass</key>
+			<string>HBLinkTableCell</string>
 			<key>label</key>
 			<string>Source Code</string>
 			<key>subtitle</key>
@@ -934,10 +972,10 @@
 			<string>https://github.com/donato-fiore/GameSeagull</string>
 		</dict>
 		<dict>
-			<key>cellClass</key>
-			<string>HBLinkTableCell</string>
 			<key>cell</key>
 			<string>PSButtonCell</string>
+			<key>cellClass</key>
+			<string>HBLinkTableCell</string>
 			<key>label</key>
 			<string>Donate</string>
 			<key>subtitle</key>

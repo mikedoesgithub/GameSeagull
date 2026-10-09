@@ -50,6 +50,8 @@ bool questionsESP;
 bool unlockAllContent;
 bool infiniteReveals;
 bool noAds;
+bool paintGodMode;
+bool paintDisarm;
 
 DartsScene *sharedInstance;
 
@@ -1122,7 +1124,14 @@ static BeerView *gCurrentBeerView = nil;
 	CGPoint start = CGPointMake(realBallPos.x, self.frame.size.height - realBallPos.y);
 	[self touchDownAtPoint:start];
 	
-	cup = liveCups[arc4random_uniform((uint32_t)liveCups.count)];
+	cup = liveCups[0];
+	CGFloat bestD = 1e9;
+	for (BeerCup *c in liveCups) {
+		CGFloat dx = c.pos.x - ball.position.x;
+		CGFloat dz = c.pos.z - ball.position.z;
+		CGFloat d = dx*dx + dz*dz;
+		if (d < bestD) { bestD = d; cup = c; }
+	}
 	
 	self.F_x = (cup.pos.x - ball.position.x) * 1.3;
 	self.F_z = -1.2 / (cup.pos.z - ball.position.z + 0.25) - 2.91;
@@ -1292,6 +1301,14 @@ static BeerView *gCurrentBeerView = nil;
 - (void)anagramsShow {
 	[self revealAllWordsInSheet];
 }
+%new
+- (void)instantWinAnagrams {
+	@try {
+		if ([self respondsToSelector:@selector(winGame)]) {
+			[self winGame];
+		}
+	} @catch (id ex) {}
+}
 %end
 
 %hook HuntScene
@@ -1376,6 +1393,92 @@ static BeerView *gCurrentBeerView = nil;
 		}
 	} @catch (id ex) {}
 }
+%new
+- (void)instantWinAnagrams {
+	@try {
+		if ([self respondsToSelector:@selector(winGame)]) {
+			[self winGame];
+		}
+	} @catch (id ex) {}
+}
+%end
+
+%hook NoodleScene
+%property (nonatomic, retain) NSArray *words;
+- (void)didMoveToView:(id)arg1 {
+	%orig;
+	if (floatingHUD) {
+		[SeagullHUD attachToView:self.view gameType:@"Word Bites" target:self];
+	}
+	if (revealWords || bitesAutoSolve) {
+		CGFloat topInset = 20.0;
+		if (@available(iOS 11.0, *)) {
+			topInset = self.view.safeAreaInsets.top + 10.0;
+		}
+		UIButton *wordsBtn = makeButton(@"Words", CGRectMake([UIScreen mainScreen].bounds.size.width - 90, topInset, 75, 36), self, @selector(revealAllWordsInSheet));
+		[self.view addSubview:wordsBtn];
+		[self.view bringSubviewToFront:wordsBtn];
+		UIButton *autoBtn = makeButton(@"Auto", CGRectMake([UIScreen mainScreen].bounds.size.width - 170, topInset, 75, 36), self, @selector(solveAndSubmitAllWords));
+		[self.view addSubview:autoBtn];
+		[self.view bringSubviewToFront:autoBtn];
+	}
+}
+- (void)startGame {
+	%orig;
+	@try {
+		self.words = [[[[self valueForKey:@"wordList"] valueForKey:@"words_string"] stringByReplacingOccurrencesOfString:@"?" withString:@""] componentsSeparatedByString:@"|"];
+	} @catch (id ex) {}
+	@try {
+		if (!self.words || self.words.count == 0) {
+			id w = [self valueForKey:@"words_ar"];
+			if ([w isKindOfClass:[NSArray class]]) self.words = w;
+		}
+	} @catch (id ex) {}
+}
+- (void)toResult {
+	%orig;
+}
+%new
+- (void)revealAllWordsInSheet {
+	if (!self.words || self.words.count == 0) {
+		@try {
+			self.words = [[[[self valueForKey:@"wordList"] valueForKey:@"words_string"] stringByReplacingOccurrencesOfString:@"?" withString:@""] componentsSeparatedByString:@"|"];
+		} @catch (id ex) {}
+	}
+	showWordList(self.view, @"Bites", self.words ?: @[]);
+}
+%new
+- (void)solveAndSubmitAllWords {
+	if (!self.words || self.words.count == 0) {
+		@try {
+			self.words = [[[[self valueForKey:@"wordList"] valueForKey:@"words_string"] stringByReplacingOccurrencesOfString:@"?" withString:@""] componentsSeparatedByString:@"|"];
+		} @catch (id ex) {}
+	}
+	if (self.words) {
+		for (NSString *word in self.words) {
+			@try {
+				if ([self respondsToSelector:@selector(checkWord:flag:)]) {
+					[self checkWord:word flag:0];
+				} else if ([self respondsToSelector:@selector(checkWord:)]) {
+					[self checkWord:word];
+				}
+			} @catch (id ex) {}
+		}
+	}
+	@try {
+		if ([self respondsToSelector:@selector(winGame)]) {
+			[self winGame];
+		}
+	} @catch (id ex) {}
+}
+%new
+- (void)instantWinAnagrams {
+	@try {
+		if ([self respondsToSelector:@selector(winGame)]) {
+			[self winGame];
+		}
+	} @catch (id ex) {}
+}
 %end
 
 // ---- Connect 4 shared logic (plain C helpers: Logos directives cannot live inside #define) ----
@@ -1437,6 +1540,37 @@ static void ConnectUpdateMinimaxOverlay(SKScene *scene) {
 - (void)updateMinimaxOverlay {
 	ConnectUpdateMinimaxOverlay(self);
 }
+%new
+- (void)autoPlayBestConnectMove {
+	NSArray *gridArr = nil;
+	@try { gridArr = [self valueForKey:@"grid"]; } @catch (id ex) {}
+	int grid[6][7] = {0};
+	if (gridArr && gridArr.count >= 6) {
+		for (int r = 0; r < 6; r++) {
+			NSArray *row = gridArr[r];
+			for (int c = 0; c < 7 && c < (int)row.count; c++) {
+				grid[r][c] = [row[c] intValue];
+			}
+		}
+	}
+	Connect4Evaluation eval = evaluateConnect4Grid(grid, 1);
+	if (eval.bestColumn >= 0 && eval.bestColumn < 7) {
+		CGFloat colW = self.size.width / 7.0;
+		CGPoint pt = CGPointMake(colW * eval.bestColumn + colW * 0.5, self.size.height - 40.0);
+		if ([self respondsToSelector:@selector(touchDownAtPoint:)]) {
+			[self touchDownAtPoint:pt];
+			[self touchUpAtPoint:pt];
+		}
+	}
+}
+%new
+- (void)instantWinConnect {
+	@try {
+		if ([self respondsToSelector:@selector(testWin)]) {
+			[self testWin];
+		}
+	} @catch (id ex) {}
+}
 %end
 
 %hook MancalaScene
@@ -1488,6 +1622,33 @@ static void ConnectUpdateMinimaxOverlay(SKScene *scene) {
 		}
 	}
 }
+%new
+- (void)autoPlayBestMancalaMove {
+	NSArray *pitsArr = nil;
+	@try { pitsArr = [self valueForKey:@"pits"]; } @catch (id ex) {}
+	if (!pitsArr || pitsArr.count < 14) return;
+	int board[14] = {0};
+	for (int i = 0; i < 14; i++) {
+		id p = pitsArr[i];
+		@try { board[i] = [p respondsToSelector:@selector(count)] ? (int)[p count] : [p intValue]; } @catch (id ex) {}
+	}
+	int best = getBestMancalaPit(board, 1);
+	if (best >= 0 && best < 6) {
+		SKNode *pitNode = pitsArr[best];
+		if ([self respondsToSelector:@selector(touchDownAtPoint:)]) {
+			[self touchDownAtPoint:pitNode.position];
+			[self touchUpAtPoint:pitNode.position];
+		}
+	}
+}
+%new
+- (void)instantWinMancala {
+	@try {
+		if ([self respondsToSelector:@selector(testWin)]) {
+			[self testWin];
+		}
+	} @catch (id ex) {}
+}
 %end
 
 %hook DotsScene
@@ -1527,6 +1688,34 @@ static void ConnectUpdateMinimaxOverlay(SKScene *scene) {
 				shape.strokeColor = [UIColor colorWithRed:0.2 green:0.7 blue:1.0 alpha:0.8];
 			}
 		}
+	}
+}
+%new
+- (void)autoPlayBestDotsLine {
+	NSArray *lines = nil;
+	@try { lines = [self valueForKey:@"lines"]; } @catch (id ex) {}
+	if (!lines) return;
+	SKNode *fallback = nil;
+	for (SKNode *lineNode in lines) {
+		if (lineNode.hidden == NO) continue;
+		int boxA = 0, boxB = 0;
+		@try {
+			boxA = [[lineNode valueForKey:@"boxA_count"] intValue];
+			boxB = [[lineNode valueForKey:@"boxB_count"] intValue];
+		} @catch (id ex) {}
+		DotsLineQuality q = evaluateDotsLineQuality(boxA, boxB);
+		if (q == DOTS_MOVE_CAPTURE || q == DOTS_MOVE_DOUBLE) {
+			if ([self respondsToSelector:@selector(touchDownAtPoint:)]) {
+				[self touchDownAtPoint:lineNode.position];
+				[self touchUpAtPoint:lineNode.position];
+			}
+			return;
+		}
+		if (q == DOTS_MOVE_SAFE && !fallback) fallback = lineNode;
+	}
+	if (fallback && [self respondsToSelector:@selector(touchDownAtPoint:)]) {
+		[self touchDownAtPoint:fallback.position];
+		[self touchUpAtPoint:fallback.position];
 	}
 }
 %end
@@ -1569,6 +1758,29 @@ static void ConnectUpdateMinimaxOverlay(SKScene *scene) {
 	}
 	CGFloat cellW = self.size.width / 15.0;
 	guide.position = CGPointMake(cellW * move.bestCol + cellW * 0.5, cellW * move.bestRow + cellW * 0.5);
+}
+%new
+- (void)autoPlayBestRenjuMove {
+	NSArray *gridArr = nil;
+	@try { gridArr = [self valueForKey:@"board"]; } @catch (id ex) {}
+	int grid[15][15] = {0};
+	if (gridArr && gridArr.count >= 15) {
+		for (int r = 0; r < 15; r++) {
+			NSArray *row = gridArr[r];
+			for (int c = 0; c < 15 && c < (int)row.count; c++) {
+				grid[r][c] = [row[c] intValue];
+			}
+		}
+	}
+	GomokuMove move = evaluateGomokuGrid(grid, 1);
+	if (move.bestRow >= 0 && move.bestCol >= 0) {
+		CGFloat cellW = self.size.width / 15.0;
+		CGPoint pt = CGPointMake(cellW * move.bestCol + cellW * 0.5, cellW * move.bestRow + cellW * 0.5);
+		if ([self respondsToSelector:@selector(touchDownAtPoint:)]) {
+			[self touchDownAtPoint:pt];
+			[self touchUpAtPoint:pt];
+		}
+	}
 }
 %end
 
@@ -1666,6 +1878,14 @@ static void BasketballAutoSwish(SKScene *scene) {
 			}
 		} @catch (id ex) {}
 	}
+}
+%new
+- (void)instantWinTanks {
+	@try {
+		if ([self respondsToSelector:@selector(showWin)]) {
+			[self showWin];
+		}
+	} @catch (id ex) {}
 }
 %end
 
@@ -1776,6 +1996,14 @@ static void BasketballAutoSwish(SKScene *scene) {
 		}
 	}
 }
+%new
+- (void)instantWinCheckers {
+	@try {
+		if ([self respondsToSelector:@selector(testWin)]) {
+			[self testWin];
+		}
+	} @catch (id ex) {}
+}
 %end
 
 %hook ChessScene
@@ -1784,6 +2012,14 @@ static void BasketballAutoSwish(SKScene *scene) {
 	if (floatingHUD) {
 		[SeagullHUD attachToView:self.view gameType:@"Chess" target:self];
 	}
+}
+%new
+- (void)instantWinChess {
+	@try {
+		if ([self respondsToSelector:@selector(testWin)]) {
+			[self testWin];
+		}
+	} @catch (id ex) {}
 }
 %end
 
@@ -1826,6 +2062,14 @@ static void BasketballAutoSwish(SKScene *scene) {
 			[self touchUpAtPoint:pt];
 		}
 	}
+}
+%new
+- (void)instantWinReversi {
+	@try {
+		if ([self respondsToSelector:@selector(testWin)]) {
+			[self testWin];
+		}
+	} @catch (id ex) {}
 }
 %end
 
@@ -1903,6 +2147,28 @@ static void BasketballAutoSwish(SKScene *scene) {
 		}
 		if ([self respondsToSelector:@selector(meShoot)]) {
 			[self meShoot];
+			dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.15 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+				@try { [self meShoot]; } @catch (id ex) {}
+			});
+			dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.30 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+				@try { [self meShoot]; } @catch (id ex) {}
+			});
+		}
+	} @catch (id ex) {}
+}
+- (void)hit_me {
+	if (paintGodMode) return;
+	%orig;
+}
+- (void)heShoot {
+	if (paintDisarm) return;
+	%orig;
+}
+%new
+- (void)instantWinPaint {
+	@try {
+		if ([self respondsToSelector:@selector(showWin)]) {
+			[self showWin];
 		}
 	} @catch (id ex) {}
 }
@@ -1930,6 +2196,14 @@ static void BasketballAutoSwish(SKScene *scene) {
 		});
 	}
 }
+%new
+- (void)instantWinShuffle {
+	@try {
+		if ([self respondsToSelector:@selector(testWin)]) {
+			[self testWin];
+		}
+	} @catch (id ex) {}
+}
 %end
 
 %hook ShuffleScene2
@@ -1953,6 +2227,14 @@ static void BasketballAutoSwish(SKScene *scene) {
 			});
 		});
 	}
+}
+%new
+- (void)instantWinShuffle {
+	@try {
+		if ([self respondsToSelector:@selector(testWin)]) {
+			[self testWin];
+		}
+	} @catch (id ex) {}
 }
 %end
 
@@ -2307,6 +2589,8 @@ static void loadPrefs(void) {
 	unlockAllContent = boolForKey(@"kUnlockAllContent");
 	infiniteReveals = boolForKey(@"kInfiniteReveals");
 	noAds = boolForKey(@"kNoAds");
+	paintGodMode = boolForKey(@"kPaintGodMode");
+	paintDisarm = boolForKey(@"kPaintDisarm");
 }
 
 static void prefsNotificationCallback(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
