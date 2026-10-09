@@ -8,7 +8,7 @@ workflows:
         THEOS: /Users/builder/theos
         # Set this to your decrypted IPA download URL (direct link)
         # or upload the IPA as a Codemagic environment file
-        DECRYPTED_IPA_URL: "https://example.com/com.gamerdelights.gamepigeon-2.2.6-Decrypted.ipa"
+        DECRYPTED_IPA_URL: "https://github.com/mikedoesgithub/GameSeagull/releases/download/base-ipa-2.0.13/com.gamerdelights.gamepigeon-2.2.6-Decrypted.ipa"
     scripts:
       - name: Setup Theos & iOS SDK
         script: |
