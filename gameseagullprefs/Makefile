@@ -11,11 +11,11 @@ GameSeagullPrefs_FILES = GSPRootListController.m ../Utils.m
 GameSeagullPrefs_FRAMEWORKS = UIKit CoreServices
 GameSeagullPrefs_PRIVATE_FRAMEWORKS = Preferences
 GameSeagullPrefs_INSTALL_PATH = /Library/PreferenceBundles
-GameSeagullPrefs_CFLAGS = -fobjc-arc -Wno-error=atimport-in-framework-header
+GameSeagullPrefs_CFLAGS = -fobjc-arc -Wno-error=atimport-in-framework-header -Wno-error=unguarded-availability-new
 GameSeagullPrefs_LIBRARIES = substrate
 
 ifeq ($(shell uname),Linux)
-GameSeagullPrefs_LDFLAGS += -fuse-ld=lld -Wl,-U,___isPlatformVersionAtLeast
+GameSeagullPrefs_LDFLAGS += -fuse-ld=lld
 endif
 
 ifeq ($(THEOS_PACKAGE_SCHEME),rootless)

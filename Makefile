@@ -11,13 +11,14 @@ TWEAK_NAME = GameSeagull
 
 GameSeagull_FILES = Tweak.x Utils.m
 GameSeagull_LIBRARIES = substrate
-GameSeagull_CFLAGS = -fobjc-arc -Wno-error=deprecated-declarations -ferror-limit=0
+GameSeagull_CFLAGS = -fobjc-arc -Wno-error=deprecated-declarations -Wno-error=unguarded-availability-new -ferror-limit=0
 
-# Linux (Omarchy/Arch) local builds: use LLVM Mach-O linker, defer
-# __isPlatformVersionAtLeast to runtime (real libSystem on device has it).
+# Linux (Omarchy/Arch) local builds: use LLVM Mach-O linker.
+# (No -U/___isPlatformVersionAtLeast hack: the source no longer references
+# @available at all, so dyld has nothing unresolvable. See crash D0FAAF15.)
 # macOS/Xcode (Codemagic) needs neither flag.
 ifeq ($(shell uname),Linux)
-GameSeagull_LDFLAGS += -fuse-ld=lld -Wl,-U,___isPlatformVersionAtLeast
+GameSeagull_LDFLAGS += -fuse-ld=lld
 endif
 
 include $(THEOS_MAKE_PATH)/tweak.mk

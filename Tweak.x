@@ -1006,10 +1006,7 @@ static void executeGolfAutoPuttStealth(SKScene *scene) {
 	}
 
 	if (golfAutoPuttStealth) {
-		CGFloat topInset = 20.0;
-		if (@available(iOS 11.0, *)) {
-			topInset = self.view.safeAreaInsets.top + 10.0;
-		}
+		CGFloat topInset = self.view.safeAreaInsets.top + 10.0;
 		self.golfAutoButton = makeButton(@"Auto Putt", CGRectMake([UIScreen mainScreen].bounds.size.width / 2 - 50, topInset, 100, 36), self, @selector(autoShootHoleInOne));
 		[self.view addSubview:self.golfAutoButton];
 		[self.view bringSubviewToFront:self.golfAutoButton];
@@ -1068,10 +1065,7 @@ static void executeGolfAutoPuttStealth(SKScene *scene) {
 
 	if (!autoCupPong) return;
 
-	CGFloat topInset = 20.0;
-	if (@available(iOS 11.0, *)) {
-		topInset = self.view.safeAreaInsets.top + 10.0;
-	}
+	CGFloat topInset = self.view.safeAreaInsets.top + 10.0;
 	UIButton *button = makeButton(@"Shoot", CGRectMake([UIScreen mainScreen].bounds.size.width / 2 - 50, topInset, 100, 36), self.scene3d, @selector(shootRandomCup));
 	[self.view addSubview:button];
 	[self.view bringSubviewToFront:button];
@@ -1330,10 +1324,7 @@ static BeerView *gCurrentBeerView = nil;
 	}
 
 	if (revealWords) {
-		CGFloat topInset = 20.0;
-		if (@available(iOS 11.0, *)) {
-			topInset = self.view.safeAreaInsets.top + 10.0;
-		}
+		CGFloat topInset = self.view.safeAreaInsets.top + 10.0;
 		self.hunt_revealWordsButton = makeButton(@"Words", CGRectMake([UIScreen mainScreen].bounds.size.width - 90, topInset, 75, 36), self, @selector(revealAllWordsInSheet));
 		[self.view addSubview:self.hunt_revealWordsButton];
 		[self.view bringSubviewToFront:self.hunt_revealWordsButton];
@@ -1411,10 +1402,7 @@ static BeerView *gCurrentBeerView = nil;
 		[SeagullHUD attachToView:self.view gameType:@"Word Bites" target:self];
 	}
 	if (revealWords || bitesAutoSolve) {
-		CGFloat topInset = 20.0;
-		if (@available(iOS 11.0, *)) {
-			topInset = self.view.safeAreaInsets.top + 10.0;
-		}
+		CGFloat topInset = self.view.safeAreaInsets.top + 10.0;
 		UIButton *wordsBtn = makeButton(@"Words", CGRectMake([UIScreen mainScreen].bounds.size.width - 90, topInset, 75, 36), self, @selector(revealAllWordsInSheet));
 		[self.view addSubview:wordsBtn];
 		[self.view bringSubviewToFront:wordsBtn];
@@ -1790,10 +1778,7 @@ static void BasketballDidMoveToView(SKScene *scene, id target) {
 		[SeagullHUD attachToView:scene.view gameType:@"Basketball" target:target];
 	}
 	if (basketAutoSwish) {
-		CGFloat topInset = 20.0;
-		if (@available(iOS 11.0, *)) {
-			topInset = scene.view.safeAreaInsets.top + 10.0;
-		}
+	CGFloat topInset = scene.view.safeAreaInsets.top + 10.0;
 		UIButton *btn = makeButton(@"Auto Swish", CGRectMake([UIScreen mainScreen].bounds.size.width / 2 - 55, topInset, 110, 36), target, @selector(gp_autoSwishShoot));
 		@try { [target setValue:btn forKey:@"autoBasketButton"]; } @catch (id ex) {}
 		[scene.view addSubview:btn];
@@ -1899,10 +1884,7 @@ static void BasketballAutoSwish(SKScene *scene) {
 		[SeagullHUD attachToView:self.view gameType:@"Golf" target:self];
 	}
 	if (golfAutoPuttStealth) {
-		CGFloat topInset = 20.0;
-		if (@available(iOS 11.0, *)) {
-			topInset = self.view.safeAreaInsets.top + 10.0;
-		}
+		CGFloat topInset = self.view.safeAreaInsets.top + 10.0;
 		self.golfAutoButton = makeButton(@"Auto Hole-In-1", CGRectMake([UIScreen mainScreen].bounds.size.width / 2 - 65, topInset, 130, 36), self, @selector(autoShootHoleInOne));
 		[self.view addSubview:self.golfAutoButton];
 		[self.view bringSubviewToFront:self.golfAutoButton];

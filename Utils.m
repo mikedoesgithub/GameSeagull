@@ -3,30 +3,24 @@
 #import "substrate.h"
 
 UIWindow *GSG_keyWindow(void) {
+    // Deployment target is iOS 14: connectedScenes (iOS 13+) always exists.
     UIApplication *app = [UIApplication sharedApplication];
-    if (@available(iOS 13.0, *)) {
-        for (UIScene *scene in app.connectedScenes) {
-            if (scene.activationState == UISceneActivationStateForegroundActive &&
-                [scene isKindOfClass:[UIWindowScene class]]) {
-                for (UIWindow *w in ((UIWindowScene *)scene).windows) {
-                    if (w.isKeyWindow) return w;
-                }
+    for (UIScene *scene in app.connectedScenes) {
+        if (scene.activationState == UISceneActivationStateForegroundActive &&
+            [scene isKindOfClass:[UIWindowScene class]]) {
+            for (UIWindow *w in ((UIWindowScene *)scene).windows) {
+                if (w.isKeyWindow) return w;
             }
         }
-        // Fallback: first foreground window scene
-        for (UIScene *scene in app.connectedScenes) {
-            if ([scene isKindOfClass:[UIWindowScene class]]) {
-                UIWindowScene *ws = (UIWindowScene *)scene;
-                if (ws.windows.count > 0) return ws.windows[0];
-            }
-        }
-        return nil;
-    } else {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-        return app.keyWindow;
-#pragma clang diagnostic pop
     }
+    // Fallback: first window of any window scene.
+    for (UIScene *scene in app.connectedScenes) {
+        if ([scene isKindOfClass:[UIWindowScene class]]) {
+            UIWindowScene *ws = (UIWindowScene *)scene;
+            if (ws.windows.count > 0) return ws.windows[0];
+        }
+    }
+    return nil;
 }
 
 uint64_t bh_memmem(const uint8_t* haystack, size_t hlen, const uint8_t* needle, size_t nlen) {
@@ -110,7 +104,9 @@ void showWordList(UIView *parentView, NSString *title, NSArray<NSString *> *word
     UIViewController *wordVC = [[UIViewController alloc] init];
     wordVC.modalPresentationStyle = UIModalPresentationPageSheet;
 
-    if (@available(iOS 15.0, *)) {
+    // Sheet API is iOS 15+: probe at runtime instead of @available
+    // (@available emits ___isPlatformVersionAtLeast, unresolvable by dyld here).
+    if ([wordVC respondsToSelector:@selector(sheetPresentationController)]) {
         UISheetPresentationController *sheet = wordVC.sheetPresentationController;
         if (sheet) {
             sheet.detents = @[UISheetPresentationControllerDetent.mediumDetent, UISheetPresentationControllerDetent.largeDetent];
@@ -1071,11 +1067,10 @@ static SeagullHUD *gSharedHUD = nil;
         [btn addTarget:self.currentTarget action:sel forControlEvents:UIControlEventTouchUpInside];
     }
     [btn addAction:[UIAction actionWithHandler:^(__kindof UIAction * _Nonnull action) {
-        if (@available(iOS 10.0, *)) {
-            UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
-            [feedback prepare];
-            [feedback impactOccurred];
-        }
+        // Deployment target is iOS 14: haptics (iOS 10+) always exist.
+        UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
+        [feedback prepare];
+        [feedback impactOccurred];
     }] forControlEvents:UIControlEventTouchUpInside];
     [self.stackView addArrangedSubview:btn];
 }
