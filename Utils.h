@@ -60,6 +60,27 @@ typedef struct {
 } GomokuMove;
 GomokuMove evaluateGomokuGrid(const int grid[15][15], int player);
 
+typedef struct {
+    int scores[8][8];
+    int bestRow;
+    int bestCol;
+    int maxFlips;
+} ReversiEvaluation;
+ReversiEvaluation evaluateReversiBoard(const int board[8][8], int player);
+
+typedef struct {
+    int fromRow, fromCol;
+    int toRow, toCol;
+    int score;
+    BOOL isJump;
+} CheckersEvaluation;
+CheckersEvaluation evaluateCheckersMoves(const int board[8][8], int player);
+
+int getBestFillerColor(const int grid[12][8], int player1Color, int player2Color, int player);
+CGPoint calculateShuffleImpulse(CGSize sceneSize);
+CGPoint applyPoolPocketMagnet(CGPoint ballPos, CGPoint ballVel, NSArray *pockets, CGFloat magnetRadius);
+
+
 // In-Game Floating HUD Menu
 @interface SeagullHUD : UIView
 @property (nonatomic, copy) NSString *currentGameType;

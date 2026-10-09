@@ -586,6 +586,246 @@ GomokuMove evaluateGomokuGrid(const int grid[15][15], int player) {
     return move;
 }
 
+// ==================== REVERSI / OTHELLO STRATEGIC SOLVER ====================
+
+ReversiEvaluation evaluateReversiBoard(const int board[8][8], int player) {
+    ReversiEvaluation eval;
+    memset(&eval, 0, sizeof(eval));
+    eval.bestRow = -1;
+    eval.bestCol = -1;
+
+    static const int posWeights[8][8] = {
+        { 100, -35,  15,  10,  10,  15, -35, 100 },
+        { -35, -50,  -5,  -5,  -5,  -5, -50, -35 },
+        {  15,  -5,   5,   2,   2,   5,  -5,  15 },
+        {  10,  -5,   2,   1,   1,   2,  -5,  10 },
+        {  10,  -5,   2,   1,   1,   2,  -5,  10 },
+        {  15,  -5,   5,   2,   2,   5,  -5,  15 },
+        { -35, -50,  -5,  -5,  -5,  -5, -50, -35 },
+        { 100, -35,  15,  10,  10,  15, -35, 100 }
+    };
+
+    int opponent = (player == 1) ? 2 : 1;
+    int bestScore = -999999;
+    static const int dirs[8][2] = {
+        {-1,-1},{-1,0},{-1,1},
+        { 0,-1},       { 0,1},
+        { 1,-1},{ 1,0},{ 1,1}
+    };
+
+    for (int r = 0; r < 8; r++) {
+        for (int c = 0; c < 8; c++) {
+            eval.scores[r][c] = -1000;
+            if (board[r][c] != 0) continue;
+
+            int totalFlips = 0;
+            for (int d = 0; d < 8; d++) {
+                int dr = dirs[d][0];
+                int dc = dirs[d][1];
+                int nr = r + dr;
+                int nc = c + dc;
+                int count = 0;
+                while (nr >= 0 && nr < 8 && nc >= 0 && nc < 8 && board[nr][nc] == opponent) {
+                    count++;
+                    nr += dr;
+                    nc += dc;
+                }
+                if (count > 0 && nr >= 0 && nr < 8 && nc >= 0 && nc < 8 && board[nr][nc] == player) {
+                    totalFlips += count;
+                }
+            }
+
+            if (totalFlips > 0) {
+                int score = posWeights[r][c] + totalFlips * 10;
+                eval.scores[r][c] = score;
+                if (score > bestScore) {
+                    bestScore = score;
+                    eval.bestRow = r;
+                    eval.bestCol = c;
+                    eval.maxFlips = totalFlips;
+                }
+            }
+        }
+    }
+    return eval;
+}
+
+// ==================== CHECKERS AI EVALUATOR ====================
+
+CheckersEvaluation evaluateCheckersMoves(const int board[8][8], int player) {
+    CheckersEvaluation eval;
+    memset(&eval, 0, sizeof(eval));
+    eval.fromRow = -1; eval.fromCol = -1;
+    eval.toRow = -1; eval.toCol = -1;
+    eval.score = -10000;
+
+    int opponentNormal = (player == 1) ? 2 : 1;
+    int opponentKing = (player == 1) ? 4 : 3;
+    int forward = (player == 1) ? 1 : -1;
+
+    // Check jumps first (mandatory in Checkers)
+    for (int r = 0; r < 8; r++) {
+        for (int c = 0; c < 8; c++) {
+            int piece = board[r][c];
+            if (piece != player && piece != (player + 2)) continue;
+            BOOL isKing = (piece == (player + 2));
+
+            static const int dRow[4] = { 1, 1, -1, -1 };
+            static const int dCol[4] = { -1, 1, -1, 1 };
+            for (int i = 0; i < 4; i++) {
+                int dr = dRow[i];
+                int dc = dCol[i];
+                if (!isKing && dr != forward) continue;
+
+                int midR = r + dr;
+                int midC = c + dc;
+                int endR = r + 2 * dr;
+                int endC = c + 2 * dc;
+
+                if (endR >= 0 && endR < 8 && endC >= 0 && endC < 8 && midR >= 0 && midR < 8 && midC >= 0 && midC < 8) {
+                    int midP = board[midR][midC];
+                    if ((midP == opponentNormal || midP == opponentKing) && board[endR][endC] == 0) {
+                        int jumpScore = 1000 + (midP == opponentKing ? 500 : 0);
+                        if (jumpScore > eval.score) {
+                            eval.score = jumpScore;
+                            eval.fromRow = r; eval.fromCol = c;
+                            eval.toRow = endR; eval.toCol = endC;
+                            eval.isJump = YES;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // If no jumps available, evaluate regular advancement moves
+    if (eval.score < 0) {
+        for (int r = 0; r < 8; r++) {
+            for (int c = 0; c < 8; c++) {
+                int piece = board[r][c];
+                if (piece != player && piece != (player + 2)) continue;
+                BOOL isKing = (piece == (player + 2));
+
+                static const int dRow[4] = { 1, 1, -1, -1 };
+                static const int dCol[4] = { -1, 1, -1, 1 };
+                for (int i = 0; i < 4; i++) {
+                    int dr = dRow[i];
+                    int dc = dCol[i];
+                    if (!isKing && dr != forward) continue;
+
+                    int endR = r + dr;
+                    int endC = c + dc;
+                    if (endR >= 0 && endR < 8 && endC >= 0 && endC < 8 && board[endR][endC] == 0) {
+                        int moveScore = (isKing ? 60 : 25) + (3 - abs(endC - 3)) * 8;
+                        if ((player == 1 && endR == 7) || (player == 2 && endR == 0)) {
+                            moveScore += 350; // Crown promotion
+                        }
+                        if (moveScore > eval.score) {
+                            eval.score = moveScore;
+                            eval.fromRow = r; eval.fromCol = c;
+                            eval.toRow = endR; eval.toCol = endC;
+                            eval.isJump = NO;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return eval;
+}
+
+// ==================== FILLER SOLVER ====================
+
+int getBestFillerColor(const int grid[12][8], int player1Color, int player2Color, int player) {
+    int currentColor = (player == 1) ? player1Color : player2Color;
+    int opponentColor = (player == 1) ? player2Color : player1Color;
+
+    int visited[12][8] = {0};
+    int queue[96][2];
+    int qHead = 0, qTail = 0;
+
+    int startR = (player == 1) ? 11 : 0;
+    int startC = (player == 1) ? 0 : 7;
+    queue[qTail][0] = startR;
+    queue[qTail][1] = startC;
+    qTail++;
+    visited[startR][startC] = 1;
+
+    static const int dirs[4][2] = {{-1,0},{1,0},{0,-1},{0,1}};
+    while (qHead < qTail) {
+        int cr = queue[qHead][0];
+        int cc = queue[qHead][1];
+        qHead++;
+
+        for (int i = 0; i < 4; i++) {
+            int nr = cr + dirs[i][0];
+            int nc = cc + dirs[i][1];
+            if (nr >= 0 && nr < 12 && nc >= 0 && nc < 8 && !visited[nr][nc]) {
+                if (grid[nr][nc] == currentColor) {
+                    visited[nr][nc] = 1;
+                    queue[qTail][0] = nr;
+                    queue[qTail][1] = nc;
+                    qTail++;
+                }
+            }
+        }
+    }
+
+    int bestColor = -1;
+    int maxAbsorbed = -1;
+
+    for (int col = 0; col < 6; col++) {
+        if (col == currentColor || col == opponentColor) continue;
+
+        int absorbed = 0;
+        int checked[12][8] = {0};
+        for (int r = 0; r < 12; r++) {
+            for (int c = 0; c < 8; c++) {
+                if (visited[r][c]) {
+                    for (int i = 0; i < 4; i++) {
+                        int nr = r + dirs[i][0];
+                        int nc = c + dirs[i][1];
+                        if (nr >= 0 && nr < 12 && nc >= 0 && nc < 8 && !visited[nr][nc] && !checked[nr][nc]) {
+                            if (grid[nr][nc] == col) {
+                                checked[nr][nc] = 1;
+                                absorbed++;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (absorbed > maxAbsorbed) {
+            maxAbsorbed = absorbed;
+            bestColor = col;
+        }
+    }
+    return (bestColor >= 0) ? bestColor : 0;
+}
+
+// ==================== SHUFFLEBOARD & POOL PHYSICS HELPERS ====================
+
+CGPoint calculateShuffleImpulse(CGSize sceneSize) {
+    CGFloat targetY = sceneSize.height * 0.78f;
+    return CGPointMake(0.0f, targetY * 1.65f);
+}
+
+CGPoint applyPoolPocketMagnet(CGPoint ballPos, CGPoint ballVel, NSArray *pockets, CGFloat magnetRadius) {
+    if (!pockets || pockets.count == 0) return ballVel;
+    for (NSValue *val in pockets) {
+        CGPoint pkt = [val CGPointValue];
+        CGFloat dx = pkt.x - ballPos.x;
+        CGFloat dy = pkt.y - ballPos.y;
+        CGFloat dist = hypot(dx, dy);
+        if (dist > 0.001f && dist < magnetRadius) {
+            CGFloat pull = (1.0f - dist / magnetRadius) * 0.35f;
+            return CGPointMake(ballVel.x + (dx / dist) * pull, ballVel.y + (dy / dist) * pull);
+        }
+    }
+    return ballVel;
+}
+
 // ==================== SEAGULL IN-GAME FLOATING HUD ====================
 
 @interface SeagullHUD ()
@@ -844,7 +1084,7 @@ static SeagullHUD *gSharedHUD = nil;
     } else if ([gameType containsString:@"Dots"]) {
         [self addToggleWithTitle:@"Safe Line Color Guide" key:@"kDotsOverlay"];
     } else if ([gameType containsString:@"Basket"]) {
-        [self addActionButtonWithTitle:@"Auto-Swish Basket" icon:@"🏀" selector:@selector(autoThrowBasket)];
+        [self addActionButtonWithTitle:@"Auto-Swish Basket" icon:@"🏀" selector:@selector(gp_autoSwishShoot)];
         [self addToggleWithTitle:@"Freeze Timer" key:@"kBasketInfiniteTimer"];
     } else if ([gameType containsString:@"Tanks"]) {
         [self addToggleWithTitle:@"Zero Wind" key:@"kTanksDisableWind"];
@@ -855,6 +1095,26 @@ static SeagullHUD *gSharedHUD = nil;
     } else if ([gameType containsString:@"Archery"]) {
         [self addToggleWithTitle:@"Disable Wind" key:@"kArcheryDisableWind"];
         [self addToggleWithTitle:@"Infinite Timer" key:@"kDisableTimer"];
+    } else if ([gameType containsString:@"Checkers"]) {
+        [self addActionButtonWithTitle:@"Auto-Play Best Jump" icon:@"👑" selector:@selector(autoPlayBestCheckersMove)];
+        [self addToggleWithTitle:@"Move Guide Overlay" key:@"kCheckersOverlay"];
+    } else if ([gameType containsString:@"Chess"]) {
+        [self addToggleWithTitle:@"AI Best Move Hint" key:@"kChessOverlay"];
+    } else if ([gameType containsString:@"Reversi"]) {
+        [self addActionButtonWithTitle:@"Auto-Play Best Move" icon:@"⭐" selector:@selector(autoPlayBestReversiMove)];
+        [self addToggleWithTitle:@"Corner & Mobility Heatmap" key:@"kReversiOverlay"];
+    } else if ([gameType containsString:@"Fill"]) {
+        [self addActionButtonWithTitle:@"Auto-Pick Best Color" icon:@"🎨" selector:@selector(autoPickBestColor)];
+        [self addActionButtonWithTitle:@"Instant Win" icon:@"🏆" selector:@selector(instantWin)];
+    } else if ([gameType containsString:@"Paint"]) {
+        [self addActionButtonWithTitle:@"Auto-Aim Enemy" icon:@"🎯" selector:@selector(autoAimEnemy)];
+        [self addToggleWithTitle:@"ESP Reveal Enemy" key:@"kPaintESP"];
+    } else if ([gameType containsString:@"Shuffle"]) {
+        [self addActionButtonWithTitle:@"Perfect 3-Point Shot" icon:@"🎯" selector:@selector(launchPerfectPuck)];
+    } else if ([gameType containsString:@"Crazy"]) {
+        [self addActionButtonWithTitle:@"Instant Win" icon:@"🏆" selector:@selector(instantWin)];
+    } else if ([gameType containsString:@"Knock"]) {
+        [self addActionButtonWithTitle:@"Super Impulse Shot" icon:@"🚀" selector:@selector(superPuckShoot)];
     } else {
         [self addToggleWithTitle:@"Floating In-Game HUD" key:@"kFloatingHUD"];
         [self addToggleWithTitle:@"Word Solvers" key:@"kAutoEnterWords"];
@@ -1029,11 +1289,11 @@ typedef struct {
     switch (section) {
         case 0: return 1; // Spoof Wins
         case 1: return 1; // Floating HUD
-        case 2: return 6; // Pool
+        case 2: return 7; // Pool
         case 3: return 4; // Golf
         case 4: return 3; // Word games
-        case 5: return 4; // Board games
-        case 6: return 13; // Action games
+        case 5: return 7; // Board games
+        case 6: return 18; // Action games
         default: return 0;
     }
 }
@@ -1046,6 +1306,7 @@ static CheatSwitchEntry getSwitchEntry(NSInteger section, NSInteger row) {
         static const CheatSwitchEntry poolEntries[] = {
             {"Full Multi-Ball Trajectory", "kPoolFullTrajectory"},
             {"Break to Win in One Turn", "kPoolBreakToOneTurnWin"},
+            {"Pocket Magnet Assist", "kPoolPocketAssist"},
             {"Always Move Cue Ball", "kAlwaysMoveCueBall"},
             {"Extended Trajectory Lines", "kExtendLines"},
             {"RGB Cue Guide Line", "kRGBLine"},
@@ -1072,7 +1333,10 @@ static CheatSwitchEntry getSwitchEntry(NSInteger section, NSInteger row) {
             {"Connect 4 Minimax Guide (👑/💀)", "kConnect4Overlay"},
             {"Mancala Kalah Free Turn Guide (⭐)", "kMancalaOverlay"},
             {"Dots & Boxes Safe Line Guide", "kDotsOverlay"},
-            {"Gomoku 5-in-a-Row Threat Scanner", "kGomokuOverlay"}
+            {"Gomoku 5-in-a-Row Threat Scanner", "kGomokuOverlay"},
+            {"Checkers AI Jump & King Guide", "kCheckersOverlay"},
+            {"Reversi Corner & Mobility Heatmap", "kReversiOverlay"},
+            {"Chess Move Quality Indicator", "kChessOverlay"}
         };
         return boardEntries[row];
     } else if (section == 6) {
@@ -1089,7 +1353,12 @@ static CheatSwitchEntry getSwitchEntry(NSInteger section, NSInteger row) {
             {"Darts: One Dart Win", "kOneDart"},
             {"Archery: Disable Wind", "kArcheryDisableWind"},
             {"Archery: Disable Timer", "kDisableTimer"},
-            {"Archery: Always 50ft Target", "kArchery50ft"}
+            {"Archery: Always 50ft Target", "kArchery50ft"},
+            {"Filler: Best Color Guide", "kFillOverlay"},
+            {"Paintball: ESP Enemy Reveal", "kPaintESP"},
+            {"Shuffleboard: 3-Point Guide", "kShuffleGuide"},
+            {"Knockout: Super Impulse Puck", "kKnockSuperImpulse"},
+            {"Pool: Pocket Magnet Assist", "kPoolPocketAssist"}
         };
         return actionEntries[row];
     }

@@ -143,6 +143,14 @@
 - (void)autoThrowBasket;
 @end
 
+@interface BasketballScene : SKScene
+@property (nonatomic, retain) UIButton *autoBasketButton;
+- (void)touchDownAtPoint:(CGPoint)pt;
+- (void)touchMovedToPoint:(CGPoint)pt;
+- (void)touchUpAtPoint:(CGPoint)pt;
+- (void)gp_autoSwishShoot;
+@end
+
 @interface TanksScene : SKScene
 @property (nonatomic, retain) SKShapeNode *trajectoryLine;
 @end
@@ -156,6 +164,73 @@
 - (void)autoShootHoleInOne;
 @end
 
+@interface GolfScene2 : SKScene
+@property (nonatomic, retain) UIButton *golfAutoButton;
+@property (nonatomic, retain) SKShapeNode *golfTrajectoryNode;
+- (void)touchDownAtPoint:(CGPoint)pt;
+- (void)touchMovedToPoint:(CGPoint)pt;
+- (void)touchUpAtPoint:(CGPoint)pt;
+- (void)autoShootHoleInOne;
+@end
+
+@interface CheckersScene : SKScene
+- (void)showMove:(id)move add:(BOOL)add;
+- (void)checkAttack;
+- (void)updateCheckersOverlay;
+- (void)autoPlayBestCheckersMove;
+@end
+
+@interface ChessScene : SKScene
+- (void)showMove:(id)move add:(BOOL)add pl:(int)pl;
+- (void)updateChessOverlay;
+@end
+
+@interface ReversiScene : SKScene
+- (void)showMoves:(int)player add:(BOOL)add;
+- (void)updateReversiOverlay;
+- (void)autoPlayBestReversiMove;
+@end
+
+@interface FillScene : SKScene
+- (void)finalWin;
+- (void)fill:(id)arg1 num:(int)color;
+- (void)autoPickBestColor;
+- (void)instantWin;
+@end
+
+@interface PaintScene : SKScene
+- (void)showEnemy;
+- (void)meShoot;
+- (void)autoAimEnemy;
+@end
+
+@interface ShuffleScene : SKScene
+- (void)touchDownAtPoint:(CGPoint)pt;
+- (void)touchMovedToPoint:(CGPoint)pt;
+- (void)touchUpAtPoint:(CGPoint)pt;
+- (void)launchPerfectPuck;
+@end
+
+@interface ShuffleScene2 : SKScene
+- (void)touchDownAtPoint:(CGPoint)pt;
+- (void)touchMovedToPoint:(CGPoint)pt;
+- (void)touchUpAtPoint:(CGPoint)pt;
+- (void)launchPerfectPuck;
+@end
+
+@interface CrazyScene : SKScene
+- (void)winner;
+- (void)instantWin;
+@end
+
+@interface KnockScene : SKScene
+- (void)touchDownAtPoint:(CGPoint)pt;
+- (void)touchMovedToPoint:(CGPoint)pt;
+- (void)touchUpAtPoint:(CGPoint)pt;
+- (void)superPuckShoot;
+@end
+
 @interface GameIcon : NSObject
 @property (nonatomic, retain) NSString *_id;
 @end
+

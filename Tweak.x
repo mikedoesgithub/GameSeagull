@@ -37,6 +37,14 @@ bool dotsOverlay;
 bool gomokuOverlay;
 bool bitesAutoSolve;
 bool seaAutoSink;
+bool poolPocketAssist;
+bool checkersOverlay;
+bool reversiOverlay;
+bool chessOverlay;
+bool fillOverlay;
+bool paintESP;
+bool shuffleGuide;
+bool knockSuperImpulse;
 
 DartsScene *sharedInstance;
 
@@ -367,6 +375,23 @@ static void executeBreakToOneTurnWin(SKScene *scene) {
 	if (alwaysMoveCueBall) { \
 		[self setValue:@(true) forKey:@"move_white"]; \
 	} \
+	if (poolPocketAssist) { \
+		@try { \
+			NSArray *balls = [self valueForKey:@"balls"]; \
+			NSArray *pockets = [self valueForKey:@"pockets"]; \
+			if (balls && pockets) { \
+				for (SKNode *b in balls) { \
+					if (!b.physicsBody) continue; \
+					CGVector vel = b.physicsBody.velocity; \
+					CGFloat speed = hypot(vel.dx, vel.dy); \
+					if (speed > 5.0f && speed < 800.0f) { \
+						CGPoint p = applyPoolPocketMagnet(b.position, CGPointMake(vel.dx, vel.dy), pockets, 40.0f); \
+						b.physicsBody.velocity = CGVectorMake(p.x, p.y); \
+					} \
+				} \
+			} \
+		} @catch (id ex) {} \
+	} \
 } \
 - (void)mMove { \
 	%orig; \
@@ -637,6 +662,14 @@ IMPLEMENT_POOL_SCENE(PoolScene3)
 		[numberLabel.centerXAnchor constraintEqualToAnchor:self.aimbotStatusView.centerXAnchor],
 		[numberLabel.topAnchor constraintEqualToAnchor:multiplierLabel.bottomAnchor constant:5]
 	]];
+}
+
+- (void)showScore:(int)arg1 full_score:(int)arg2 multi:(int)arg3 pos:(int)arg4 send_pos:(CGPoint)arg5 {
+	if (oneDartWin) {
+		%orig(100, self.score1, arg3, arg4, arg5);
+	} else {
+		%orig;
+	}
 }
 
 - (void)showScore2:(int)arg1 full_score:(int)arg2 multi:(int)arg3 pos:(int)arg4 send_pos:(CGPoint)arg5 {
@@ -1369,64 +1402,77 @@ IMPLEMENT_CONNECT_SCENE(FourScene)
 }
 %end
 
-%hook BasketScene
-%property (nonatomic, retain) UIButton *autoBasketButton;
-
-- (void)didMoveToView:(id)arg1 {
-	%orig;
-
-	if (floatingHUD) {
-		[SeagullHUD attachToView:self.view gameType:@"Basketball" target:self];
-	}
-
-	if (basketAutoSwish) {
-		CGFloat topInset = 20.0;
-		if (@available(iOS 11.0, *)) {
-			topInset = self.view.safeAreaInsets.top + 10.0;
-		}
-		self.autoBasketButton = makeButton(@"Auto Swish", CGRectMake([UIScreen mainScreen].bounds.size.width / 2 - 55, topInset, 110, 36), self, @selector(gp_autoSwishShoot));
-		[self.view addSubview:self.autoBasketButton];
-		[self.view bringSubviewToFront:self.autoBasketButton];
-	}
-}
-
-- (void)update:(double)arg1 {
-	%orig;
-
-	if (basketInfiniteTimer) {
-		@try {
-			[self setValue:@(60) forKey:@"time"];
-		} @catch (id ex) {}
-	}
-}
-
-%new
-- (void)gp_autoSwishShoot {
-	CGPoint startPos = CGPointMake(self.size.width * 0.5, 140.0);
-	CGPoint hoopPos = CGPointMake(self.size.width * 0.5, self.size.height - 180.0);
-	
-	if ([self respondsToSelector:@selector(touchDownAtPoint:)]) {
-		[self performSelector:@selector(touchDownAtPoint:) withObject:[NSValue valueWithCGPoint:startPos]];
-	}
-	if ([self respondsToSelector:@selector(touchMovedToPoint:)]) {
-		[self performSelector:@selector(touchMovedToPoint:) withObject:[NSValue valueWithCGPoint:hoopPos]];
-	}
-	if ([self respondsToSelector:@selector(touchUpAtPoint:)]) {
-		[self performSelector:@selector(touchUpAtPoint:) withObject:[NSValue valueWithCGPoint:hoopPos]];
-	}
-}
-
-%new
-- (void)autoThrowBasket {
-	[self gp_autoSwishShoot];
-}
+#define IMPLEMENT_BASKETBALL_HOOK(SceneClass) \
+%hook SceneClass \
+%property (nonatomic, retain) UIButton *autoBasketButton; \
+- (void)didMoveToView:(id)arg1 { \
+	%orig; \
+	if (floatingHUD) { \
+		[SeagullHUD attachToView:self.view gameType:@"Basketball" target:self]; \
+	} \
+	if (basketAutoSwish) { \
+		CGFloat topInset = 20.0; \
+		if (@available(iOS 11.0, *)) { \
+			topInset = self.view.safeAreaInsets.top + 10.0; \
+		} \
+		self.autoBasketButton = makeButton(@"Auto Swish", CGRectMake([UIScreen mainScreen].bounds.size.width / 2 - 55, topInset, 110, 36), self, @selector(gp_autoSwishShoot)); \
+		[self.view addSubview:self.autoBasketButton]; \
+		[self.view bringSubviewToFront:self.autoBasketButton]; \
+	} \
+} \
+- (void)update:(double)arg1 { \
+	%orig; \
+	if (basketInfiniteTimer) { \
+		@try { \
+			[self setValue:@(60) forKey:@"time"]; \
+			[self setValue:@(60) forKey:@"shot_time"]; \
+		} @catch (id ex) {} \
+	} \
+} \
+%new \
+- (void)gp_autoSwishShoot { \
+	CGPoint startPos = CGPointMake(self.size.width * 0.5, 140.0); \
+	CGPoint hoopPos = CGPointMake(self.size.width * 0.5, self.size.height - 180.0); \
+	if ([self respondsToSelector:@selector(touchDownAtPoint:)]) { \
+		[self touchDownAtPoint:startPos]; \
+		dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.06 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{ \
+			[self touchMovedToPoint:CGPointMake(startPos.x, startPos.y + 60.0)]; \
+			dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.06 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{ \
+				[self touchUpAtPoint:hoopPos]; \
+			}); \
+		}); \
+	} \
+} \
+%new \
+- (void)autoThrowBasket { \
+	[self gp_autoSwishShoot]; \
+} \
 %end
+
+IMPLEMENT_BASKETBALL_HOOK(BasketballScene)
+IMPLEMENT_BASKETBALL_HOOK(BasketScene)
 
 %hook TanksScene
 - (void)didMoveToView:(id)arg1 {
 	%orig;
 	if (floatingHUD) {
 		[SeagullHUD attachToView:self.view gameType:@"Tanks" target:self];
+	}
+}
+
+- (void)setWind:(float)arg1 {
+	if (tanksDisableWind) {
+		%orig(0.0f);
+	} else {
+		%orig;
+	}
+}
+
+- (void)SetWind:(float)arg1 {
+	if (tanksDisableWind) {
+		%orig(0.0f);
+	} else {
+		%orig;
 	}
 }
 
@@ -1439,6 +1485,305 @@ IMPLEMENT_CONNECT_SCENE(FourScene)
 				traj.hidden = NO;
 			}
 		} @catch (id ex) {}
+	}
+}
+%end
+
+%hook GolfScene2
+%property (nonatomic, retain) UIButton *golfAutoButton;
+%property (nonatomic, retain) SKShapeNode *golfTrajectoryNode;
+
+- (void)didMoveToView:(id)arg1 {
+	%orig;
+	if (floatingHUD) {
+		[SeagullHUD attachToView:self.view gameType:@"Golf" target:self];
+	}
+	if (golfAutoPuttStealth) {
+		CGFloat topInset = 20.0;
+		if (@available(iOS 11.0, *)) {
+			topInset = self.view.safeAreaInsets.top + 10.0;
+		}
+		self.golfAutoButton = makeButton(@"Auto Hole-In-1", CGRectMake([UIScreen mainScreen].bounds.size.width / 2 - 65, topInset, 130, 36), self, @selector(autoShootHoleInOne));
+		[self.view addSubview:self.golfAutoButton];
+		[self.view bringSubviewToFront:self.golfAutoButton];
+	}
+}
+
+- (void)update:(double)arg1 {
+	%orig;
+	updateGolfTrajectoryMap((SKScene *)self);
+}
+
+%new
+- (void)autoShootHoleInOne {
+	executeGolfAutoPuttStealth((SKScene *)self);
+}
+%end
+
+%hook CheckersScene
+- (void)didMoveToView:(id)arg1 {
+	%orig;
+	if (floatingHUD) {
+		[SeagullHUD attachToView:self.view gameType:@"Checkers" target:self];
+	}
+}
+
+%new
+- (void)autoPlayBestCheckersMove {
+	int board[8][8] = {0};
+	int myPlayer = 1;
+	@try {
+		myPlayer = [[self valueForKey:@"player"] intValue] ?: 1;
+		NSArray *pieces = [self valueForKey:@"board_pieces"];
+		if ([pieces isKindOfClass:[NSArray class]]) {
+			for (int r = 0; r < 8; r++) {
+				for (int c = 0; c < 8; c++) {
+					int idx = r * 8 + c;
+					if (idx < pieces.count) {
+						id p = pieces[idx];
+						if (p && ![p isEqual:[NSNull null]]) {
+							int pl = [[p valueForKey:@"player"] intValue];
+							BOOL isKing = [[p valueForKey:@"isKing"] boolValue];
+							board[r][c] = pl + (isKing ? 2 : 0);
+						}
+					}
+				}
+			}
+		}
+	} @catch (id ex) {}
+
+	CheckersEvaluation eval = evaluateCheckersMoves(board, myPlayer);
+	if (eval.fromRow >= 0 && eval.toRow >= 0) {
+		CGFloat tileSize = self.size.width / 8.0f;
+		CGPoint startPt = CGPointMake(tileSize * (eval.fromCol + 0.5f), tileSize * (eval.fromRow + 0.5f));
+		CGPoint endPt = CGPointMake(tileSize * (eval.toCol + 0.5f), tileSize * (eval.toRow + 0.5f));
+		if ([self respondsToSelector:@selector(touchDownAtPoint:)]) {
+			[self touchDownAtPoint:startPt];
+			dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.05 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+				[self touchMovedToPoint:endPt];
+				[self touchUpAtPoint:endPt];
+			});
+		}
+	}
+}
+%end
+
+%hook ChessScene
+- (void)didMoveToView:(id)arg1 {
+	%orig;
+	if (floatingHUD) {
+		[SeagullHUD attachToView:self.view gameType:@"Chess" target:self];
+	}
+}
+%end
+
+%hook ReversiScene
+- (void)didMoveToView:(id)arg1 {
+	%orig;
+	if (floatingHUD) {
+		[SeagullHUD attachToView:self.view gameType:@"Reversi" target:self];
+	}
+}
+
+%new
+- (void)autoPlayBestReversiMove {
+	int board[8][8] = {0};
+	int myPlayer = 1;
+	@try {
+		myPlayer = [[self valueForKey:@"player"] intValue] ?: 1;
+		NSArray *boardPieces = [self valueForKey:@"board_pieces"];
+		if ([boardPieces isKindOfClass:[NSArray class]]) {
+			for (int r = 0; r < 8; r++) {
+				for (int c = 0; c < 8; c++) {
+					int idx = r * 8 + c;
+					if (idx < boardPieces.count) {
+						id p = boardPieces[idx];
+						if (p && ![p isEqual:[NSNull null]]) {
+							board[r][c] = [[p valueForKey:@"player"] intValue];
+						}
+					}
+				}
+			}
+		}
+	} @catch (id ex) {}
+
+	ReversiEvaluation eval = evaluateReversiBoard(board, myPlayer);
+	if (eval.bestRow >= 0 && eval.bestCol >= 0) {
+		if ([self respondsToSelector:@selector(touchDownAtPoint:)]) {
+			CGFloat tileSize = self.size.width / 8.0f;
+			CGPoint pt = CGPointMake(tileSize * (eval.bestCol + 0.5f), tileSize * (eval.bestRow + 0.5f));
+			[self touchDownAtPoint:pt];
+			[self touchUpAtPoint:pt];
+		}
+	}
+}
+%end
+
+%hook FillScene
+- (void)didMoveToView:(id)arg1 {
+	%orig;
+	if (floatingHUD) {
+		[SeagullHUD attachToView:self.view gameType:@"Fill" target:self];
+	}
+}
+
+%new
+- (void)instantWin {
+	@try {
+		if ([self respondsToSelector:@selector(finalWin)]) {
+			[self finalWin];
+		}
+	} @catch (id ex) {}
+}
+
+%new
+- (void)autoPickBestColor {
+	int grid[12][8] = {0};
+	int p1 = 0, p2 = 1, myP = 1;
+	@try {
+		myP = [[self valueForKey:@"player"] intValue] ?: 1;
+		p1 = [[self valueForKey:@"score1"] intValue] ?: 0;
+		p2 = [[self valueForKey:@"score2"] intValue] ?: 1;
+		NSArray *tiles = [self valueForKey:@"board"];
+		if ([tiles isKindOfClass:[NSArray class]]) {
+			for (int r = 0; r < 12; r++) {
+				for (int c = 0; c < 8; c++) {
+					int idx = r * 8 + c;
+					if (idx < tiles.count) {
+						grid[r][c] = [[tiles[idx] valueForKey:@"color"] intValue];
+					}
+				}
+			}
+		}
+	} @catch (id ex) {}
+
+	int bestColor = getBestFillerColor(grid, p1, p2, myP);
+	@try {
+		if ([self respondsToSelector:@selector(fill:num:)]) {
+			[self fill:nil num:bestColor];
+		}
+	} @catch (id ex) {}
+}
+%end
+
+%hook PaintScene
+- (void)didMoveToView:(id)arg1 {
+	%orig;
+	if (floatingHUD) {
+		[SeagullHUD attachToView:self.view gameType:@"Paint" target:self];
+	}
+}
+
+- (void)update:(double)arg1 {
+	%orig;
+	if (paintESP) {
+		@try {
+			if ([self respondsToSelector:@selector(showEnemy)]) {
+				[self showEnemy];
+			}
+		} @catch (id ex) {}
+	}
+}
+
+%new
+- (void)autoAimEnemy {
+	@try {
+		if ([self respondsToSelector:@selector(showEnemy)]) {
+			[self showEnemy];
+		}
+		if ([self respondsToSelector:@selector(meShoot)]) {
+			[self meShoot];
+		}
+	} @catch (id ex) {}
+}
+%end
+
+%hook ShuffleScene
+- (void)didMoveToView:(id)arg1 {
+	%orig;
+	if (floatingHUD) {
+		[SeagullHUD attachToView:self.view gameType:@"Shuffle" target:self];
+	}
+}
+
+%new
+- (void)launchPerfectPuck {
+	CGPoint startPos = CGPointMake(self.size.width * 0.5f, 150.0f);
+	CGPoint targetPos = CGPointMake(self.size.width * 0.5f, self.size.height * 0.82f);
+	if ([self respondsToSelector:@selector(touchDownAtPoint:)]) {
+		[self touchDownAtPoint:startPos];
+		dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.05 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+			[self touchMovedToPoint:CGPointMake(startPos.x, startPos.y + 80.0f)];
+			dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.05 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+				[self touchUpAtPoint:targetPos];
+			});
+		});
+	}
+}
+%end
+
+%hook ShuffleScene2
+- (void)didMoveToView:(id)arg1 {
+	%orig;
+	if (floatingHUD) {
+		[SeagullHUD attachToView:self.view gameType:@"Shuffle" target:self];
+	}
+}
+
+%new
+- (void)launchPerfectPuck {
+	CGPoint startPos = CGPointMake(self.size.width * 0.5f, 150.0f);
+	CGPoint targetPos = CGPointMake(self.size.width * 0.5f, self.size.height * 0.82f);
+	if ([self respondsToSelector:@selector(touchDownAtPoint:)]) {
+		[self touchDownAtPoint:startPos];
+		dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.05 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+			[self touchMovedToPoint:CGPointMake(startPos.x, startPos.y + 80.0f)];
+			dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.05 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+				[self touchUpAtPoint:targetPos];
+			});
+		});
+	}
+}
+%end
+
+%hook CrazyScene
+- (void)didMoveToView:(id)arg1 {
+	%orig;
+	if (floatingHUD) {
+		[SeagullHUD attachToView:self.view gameType:@"Crazy" target:self];
+	}
+}
+
+%new
+- (void)instantWin {
+	@try {
+		if ([self respondsToSelector:@selector(winner)]) {
+			[self winner];
+		}
+	} @catch (id ex) {}
+}
+%end
+
+%hook KnockScene
+- (void)didMoveToView:(id)arg1 {
+	%orig;
+	if (floatingHUD) {
+		[SeagullHUD attachToView:self.view gameType:@"Knock" target:self];
+	}
+}
+
+%new
+- (void)superPuckShoot {
+	CGPoint startPos = CGPointMake(self.size.width * 0.5f, 160.0f);
+	CGPoint targetPos = CGPointMake(self.size.width * 0.5f, self.size.height - 120.0f);
+	if ([self respondsToSelector:@selector(touchDownAtPoint:)]) {
+		[self touchDownAtPoint:startPos];
+		dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.04 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+			[self touchMovedToPoint:CGPointMake(startPos.x, startPos.y + 120.0f)];
+			dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.04 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+				[self touchUpAtPoint:targetPos];
+			});
+		});
 	}
 }
 %end
@@ -1522,6 +1867,14 @@ static void loadPrefs(void) {
 	gomokuOverlay = boolForKey(@"kGomokuOverlay");
 	bitesAutoSolve = boolForKey(@"kBitesAutoSolve");
 	seaAutoSink = boolForKey(@"kSeaAutoSink");
+	poolPocketAssist = boolForKey(@"kPoolPocketAssist");
+	checkersOverlay = boolForKey(@"kCheckersOverlay");
+	reversiOverlay = boolForKey(@"kReversiOverlay");
+	chessOverlay = boolForKey(@"kChessOverlay");
+	fillOverlay = boolForKey(@"kFillOverlay");
+	paintESP = boolForKey(@"kPaintESP");
+	shuffleGuide = boolForKey(@"kShuffleGuide");
+	knockSuperImpulse = boolForKey(@"kKnockSuperImpulse");
 }
 
 static void prefsNotificationCallback(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
