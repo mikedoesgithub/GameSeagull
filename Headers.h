@@ -9,6 +9,9 @@
 @property (nonatomic, retain) SKShapeNode *fullTrajNode;
 - (void)drawFullMultiBallTrajectory;
 - (void)autoAimBestBall;
+- (void)triggerBreakToWinNow;
+- (void)instantWinPoolGame;
+- (void)showWin;
 @end
 
 @interface PoolScene2 : SKScene
@@ -16,6 +19,9 @@
 @property (nonatomic, retain) SKShapeNode *fullTrajNode;
 - (void)drawFullMultiBallTrajectory;
 - (void)autoAimBestBall;
+- (void)triggerBreakToWinNow;
+- (void)instantWinPoolGame;
+- (void)showWin;
 @end
 
 @interface PoolScene3 : SKScene
@@ -23,6 +29,9 @@
 @property (nonatomic, retain) SKShapeNode *fullTrajNode;
 - (void)drawFullMultiBallTrajectory;
 - (void)autoAimBestBall;
+- (void)triggerBreakToWinNow;
+- (void)instantWinPoolGame;
+- (void)showWin;
 @end
 
 @interface BeerView : SCNView
@@ -62,14 +71,18 @@
 - (void)openSettings;
 @end
 
-@interface SeaScene : NSObject
-- (void)autoSinkEnemyFleet;
-@end
-
-@interface SeaShip : SKScene
+@interface SeaShip : NSObject
 @property (nonatomic) SKSpriteNode *sprite; 
 @property (nonatomic, retain) NSArray *cells;
 @property (nonatomic) CGPoint pos;
+- (void)Die;
+@end
+
+@interface SeaScene : SKScene
+- (void)BombTo:(CGPoint)pt;
+- (void)checkWin;
+- (void)autoSinkEnemyFleet;
+- (void)strikeNextEnemyShip;
 @end
 
 @interface BitesScene : SKScene
@@ -120,11 +133,15 @@
 - (void)revealAllWordsInSheet;
 - (void)winGame;
 - (bool)checkWord:(NSString *)word flag:(bool)flag;
+- (void)solveAndSubmitAllWords;
 @end
 
 @interface PoolBall : NSObject
+@property (nonatomic) int num;
 - (bool)isStripes;
 - (bool)isSolid;
+- (bool)isNine;
+- (bool)isBlack;
 @end
 
 @interface GolfBall : NSObject
@@ -162,6 +179,8 @@
 - (void)touchMovedToPoint:(CGPoint)pt;
 - (void)touchUpAtPoint:(CGPoint)pt;
 - (void)autoShootHoleInOne;
+- (void)instantSinkInCup;
+- (void)testWin;
 @end
 
 @interface GolfScene2 : SKScene
@@ -171,6 +190,8 @@
 - (void)touchMovedToPoint:(CGPoint)pt;
 - (void)touchUpAtPoint:(CGPoint)pt;
 - (void)autoShootHoleInOne;
+- (void)instantSinkInCup;
+- (void)testWin;
 @end
 
 @interface CheckersScene : SKScene
@@ -232,5 +253,29 @@
 
 @interface GameIcon : NSObject
 @property (nonatomic, retain) NSString *_id;
+@end
+
+@interface PokerCard : SKNode
+@property (nonatomic) int suit;
+@property (nonatomic) int rank;
+@property (nonatomic) BOOL secret;
+- (void)updateTexture;
+@end
+
+@interface PokerScene : SKScene
+@property (nonatomic, retain) PokerCard *enemy_card1;
+@property (nonatomic, retain) PokerCard *enemy_card2;
+- (void)ActionWin;
+- (void)WinAll1;
+- (void)ShowCombos;
+- (void)espRevealOpponentCards;
+- (void)instantWinPot;
+- (void)showWinningCombos;
+@end
+
+@interface QuestionsScene : SKScene
+- (void)SendGuessed;
+- (void)revealSecretWord;
+- (void)autoGuessWord;
 @end
 

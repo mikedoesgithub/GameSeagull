@@ -788,6 +788,52 @@
 		<dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>Texas Hold'em Poker</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>defaults</key>
+			<string>com.fiore.gameseagull.prefs</string>
+			<key>key</key>
+			<string>kPokerCardESP</string>
+			<key>label</key>
+			<string>Reveal Opponent Cards (ESP)</string>
+			<key>iconImageSystem</key>
+			<dict>
+				<key>name</key>
+				<string>eye.fill</string>
+			</dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>20 Questions</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>defaults</key>
+			<string>com.fiore.gameseagull.prefs</string>
+			<key>key</key>
+			<string>kQuestionsESP</string>
+			<key>label</key>
+			<string>Secret Word ESP</string>
+			<key>iconImageSystem</key>
+			<dict>
+				<key>name</key>
+				<string>text.magnifyingglass</string>
+			</dict>
+			<key>PostNotification</key>
+			<string>com.fiore.gameseagull.prefs/ReloadPrefs</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
 		</dict>
 		<dict>
 			<key>cell</key>

@@ -1043,6 +1043,13 @@ static SeagullHUD *gSharedHUD = nil;
     if (self.currentTarget && [self.currentTarget respondsToSelector:sel]) {
         [btn addTarget:self.currentTarget action:sel forControlEvents:UIControlEventTouchUpInside];
     }
+    [btn addAction:[UIAction actionWithHandler:^(__kindof UIAction * _Nonnull action) {
+        if (@available(iOS 10.0, *)) {
+            UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
+            [feedback prepare];
+            [feedback impactOccurred];
+        }
+    }] forControlEvents:UIControlEventTouchUpInside];
     [self.stackView addArrangedSubview:btn];
 }
 
@@ -1055,21 +1062,34 @@ static SeagullHUD *gSharedHUD = nil;
 
     if ([gameType containsString:@"Pool"]) {
         [self addActionButtonWithTitle:@"Auto-Aim Best Ball" icon:@"🎯" selector:@selector(autoAimBestBall)];
+        [self addActionButtonWithTitle:@"Break To Win 1-Turn" icon:@"⚡" selector:@selector(triggerBreakToWinNow)];
+        [self addActionButtonWithTitle:@"Instant Win Game" icon:@"🏆" selector:@selector(instantWinPoolGame)];
         [self addToggleWithTitle:@"Break To Win 1-Turn" key:@"kPoolBreakToOneTurnWin"];
+        [self addToggleWithTitle:@"Pocket Magnet Assist" key:@"kPoolPocketAssist"];
         [self addToggleWithTitle:@"Full Trajectory Raycast" key:@"kPoolFullTrajectory"];
         [self addToggleWithTitle:@"RGB Cue Guide" key:@"kRGBLine"];
         [self addToggleWithTitle:@"Always Move Cue Ball" key:@"kAlwaysMoveCueBall"];
     } else if ([gameType containsString:@"Golf"]) {
         [self addActionButtonWithTitle:@"Stealth Hole-In-One" icon:@"⛳" selector:@selector(autoShootHoleInOne)];
+        [self addActionButtonWithTitle:@"Direct Cup Sink" icon:@"🕳️" selector:@selector(instantSinkInCup)];
         [self addToggleWithTitle:@"Physics Bounce Map" key:@"kGolfTrajectoryMap"];
         [self addToggleWithTitle:@"Stealth Putt Solver" key:@"kGolfAutoPuttStealth"];
-        [self addToggleWithTitle:@"Infinite Golf Shots" key:@"kHoleInOne"];
+        [self addToggleWithTitle:@"Always Hole-In-One" key:@"kHoleInOne"];
         [self addToggleWithTitle:@"Legit Mode (2+ Strokes)" key:@"kGolfLegitMode"];
     } else if ([gameType containsString:@"Word"] || [gameType containsString:@"Anagrams"]) {
-        [self addActionButtonWithTitle:@"Auto-Solve Words" icon:@"⚡" selector:@selector(winGame)];
+        [self addActionButtonWithTitle:@"Auto-Solve & Submit" icon:@"⚡" selector:@selector(solveAndSubmitAllWords)];
         [self addActionButtonWithTitle:@"View Full Word List" icon:@"📋" selector:@selector(revealAllWordsInSheet)];
         [self addToggleWithTitle:@"Auto Enter Words" key:@"kAutoEnterWords"];
         [self addToggleWithTitle:@"Reveal Words Button" key:@"kRevealWords"];
+    } else if ([gameType containsString:@"Poker"]) {
+        [self addActionButtonWithTitle:@"ESP Reveal Cards" icon:@"👁️" selector:@selector(espRevealOpponentCards)];
+        [self addActionButtonWithTitle:@"Instant Win Pot" icon:@"💰" selector:@selector(instantWinPot)];
+        [self addActionButtonWithTitle:@"Show Best Combos" icon:@"🃏" selector:@selector(showWinningCombos)];
+        [self addToggleWithTitle:@"Auto Card ESP" key:@"kPokerCardESP"];
+    } else if ([gameType containsString:@"Questions"]) {
+        [self addActionButtonWithTitle:@"Reveal Secret Word" icon:@"🔍" selector:@selector(revealSecretWord)];
+        [self addActionButtonWithTitle:@"Auto-Guess Secret Word" icon:@"⚡" selector:@selector(autoGuessWord)];
+        [self addToggleWithTitle:@"Secret Word ESP" key:@"kQuestionsESP"];
     } else if ([gameType containsString:@"Beer"] || [gameType containsString:@"Pong"]) {
         [self addActionButtonWithTitle:@"100% Swish Shot" icon:@"🎯" selector:@selector(shootRandomCup)];
         [self addToggleWithTitle:@"One Cup Win" key:@"kOneCup"];
@@ -1163,7 +1183,8 @@ static const GameSpoofEntry kGameSpoofEntries[] = {
     {"Mancala", "mancala"},
     {"Gomoku", "renju"},
     {"Reversi", "reversi"},
-    {"20 Questions", "questions"}
+    {"20 Questions", "questions"},
+    {"Texas Hold'em", "poker"}
 };
 static const int kGameSpoofCount = sizeof(kGameSpoofEntries) / sizeof(kGameSpoofEntries[0]);
 
@@ -1293,7 +1314,7 @@ typedef struct {
         case 3: return 4; // Golf
         case 4: return 3; // Word games
         case 5: return 7; // Board games
-        case 6: return 18; // Action games
+        case 6: return 19; // Action & Card games
         default: return 0;
     }
 }
@@ -1358,7 +1379,8 @@ static CheatSwitchEntry getSwitchEntry(NSInteger section, NSInteger row) {
             {"Paintball: ESP Enemy Reveal", "kPaintESP"},
             {"Shuffleboard: 3-Point Guide", "kShuffleGuide"},
             {"Knockout: Super Impulse Puck", "kKnockSuperImpulse"},
-            {"Pool: Pocket Magnet Assist", "kPoolPocketAssist"}
+            {"Poker: Card Reveal (ESP)", "kPokerCardESP"},
+            {"20 Questions: Secret Word ESP", "kQuestionsESP"}
         };
         return actionEntries[row];
     }

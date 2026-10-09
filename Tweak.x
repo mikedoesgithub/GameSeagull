@@ -45,6 +45,8 @@ bool fillOverlay;
 bool paintESP;
 bool shuffleGuide;
 bool knockSuperImpulse;
+bool pokerCardESP;
+bool questionsESP;
 
 DartsScene *sharedInstance;
 
@@ -316,8 +318,6 @@ static void updateFullPoolTrajectory(SKScene *scene) {
 }
 
 static void executeBreakToOneTurnWin(SKScene *scene) {
-	if (!poolBreakToOneTurnWin) return;
-
 	NSArray *balls = nil;
 	@try { balls = [scene valueForKey:@"balls"]; } @catch (id ex) {}
 	if (!balls || balls.count < 6) return;
@@ -329,12 +329,12 @@ static void executeBreakToOneTurnWin(SKScene *scene) {
 	int pocketIdx = 0;
 	for (int i = 0; i < (int)balls.count; i++) {
 		SKNode *b = balls[i];
-		if ([b respondsToSelector:@selector(isStripes)] && [b respondsToSelector:@selector(isSolid)]) {
-			if (![b performSelector:@selector(isStripes)] && ![b performSelector:@selector(isSolid)]) {
-				// Cue ball: keep safely on table
-				b.physicsBody.velocity = CGVectorMake(0.0f, 0.0f);
-				continue;
-			}
+		int num = -1;
+		@try { num = [[b valueForKey:@"num"] intValue]; } @catch (id ex) {}
+		if (num == 0) {
+			// Cue ball: keep safely on table, avoid scratch
+			b.physicsBody.velocity = CGVectorMake(0.0f, 0.0f);
+			continue;
 		}
 
 		SKNode *targetPocket = pockets[pocketIdx % pockets.count];
@@ -344,7 +344,7 @@ static void executeBreakToOneTurnWin(SKScene *scene) {
 		CGFloat dy = targetPocket.position.y - b.position.y;
 		CGFloat dist = hypot(dx, dy);
 		if (dist > 1.0f) {
-			CGFloat speed = 950.0f + (arc4random_uniform(150));
+			CGFloat speed = 1050.0f + (arc4random_uniform(150));
 			b.physicsBody.velocity = CGVectorMake((dx / dist) * speed, (dy / dist) * speed);
 		}
 	}
@@ -399,13 +399,33 @@ static void executeBreakToOneTurnWin(SKScene *scene) {
 		updateFullPoolTrajectory(self); \
 	} \
 } \
-- (void)mUp { \
+- (void)shoot:(float)angle power:(float)power spin_x:(float)spin_x spin_y:(float)spin_y save:(BOOL)save { \
 	if (poolBreakToOneTurnWin) { \
 		executeBreakToOneTurnWin(self); \
 	} \
-	%orig; \
+	%orig(angle, power, spin_x, spin_y, save); \
 	SKNode *traj = [self childNodeWithName:@"gp_full_pool_traj"]; \
 	if (traj) traj.hidden = YES; \
+} \
+- (void)touchUpAtPoint:(CGPoint)arg1 { \
+	if (poolBreakToOneTurnWin) { \
+		executeBreakToOneTurnWin(self); \
+	} \
+	%orig(arg1); \
+	SKNode *traj = [self childNodeWithName:@"gp_full_pool_traj"]; \
+	if (traj) traj.hidden = YES; \
+} \
+%new \
+- (void)triggerBreakToWinNow { \
+	executeBreakToOneTurnWin(self); \
+} \
+%new \
+- (void)instantWinPoolGame { \
+	@try { \
+		if ([self respondsToSelector:@selector(showWin)]) { \
+			[self showWin]; \
+		} \
+	} @catch (id ex) {} \
 } \
 %new \
 - (void)autoAimBestBall { \
@@ -415,11 +435,11 @@ static void executeBreakToOneTurnWin(SKScene *scene) {
 	@try { pockets = [self valueForKey:@"pockets"]; } @catch (id ex) {} \
 	SKNode *cueBall = nil; \
 	for (SKNode *b in balls) { \
-		if ([b respondsToSelector:@selector(isStripes)] && [b respondsToSelector:@selector(isSolid)]) { \
-			if (![b performSelector:@selector(isStripes)] && ![b performSelector:@selector(isSolid)]) { \
-				cueBall = b; \
-				break; \
-			} \
+		int num = -1; \
+		@try { num = [[b valueForKey:@"num"] intValue]; } @catch (id ex) {} \
+		if (num == 0) { \
+			cueBall = b; \
+			break; \
 		} \
 	} \
 	if (!cueBall && balls.count > 0) cueBall = balls[0]; \
@@ -726,15 +746,28 @@ IMPLEMENT_POOL_SCENE(PoolScene3)
 }
 %end
 
+static SKNode *getGolfBallNode(SKScene *scene) {
+	SKNode *ball = nil;
+	@try { ball = [scene valueForKey:@"golf_ball"]; } @catch (id ex) {}
+	if (!ball) { @try { ball = [scene valueForKey:@"golf_ball1"]; } @catch (id ex) {} }
+	if (!ball) { @try { ball = [scene valueForKey:@"golf_ball2"]; } @catch (id ex) {} }
+	if (!ball) { @try { ball = [scene valueForKey:@"ball"]; } @catch (id ex) {} }
+	return ball;
+}
+
+static SKNode *getGolfHoleNode(SKScene *scene) {
+	SKNode *hole = nil;
+	@try { hole = [scene valueForKey:@"hole"]; } @catch (id ex) {}
+	return hole;
+}
+
 static void updateGolfTrajectoryMap(SKScene *scene, CGPoint dragVector) {
 	if (!golfTrajectoryMap) return;
 
-	SKNode *ball = nil;
-	@try { ball = [scene valueForKey:@"ball"]; } @catch (id ex) {}
+	SKNode *ball = getGolfBallNode(scene);
 	if (!ball) return;
 
-	SKNode *hole = nil;
-	@try { hole = [scene valueForKey:@"hole"]; } @catch (id ex) {}
+	SKNode *hole = getGolfHoleNode(scene);
 	CGPoint holePos = hole ? hole.position : CGPointMake(scene.size.width * 0.5f, scene.size.height * 0.8f);
 
 	CGPoint p = ball.position;
@@ -784,12 +817,10 @@ static void updateGolfTrajectoryMap(SKScene *scene, CGPoint dragVector) {
 }
 
 static void executeGolfAutoPuttStealth(SKScene *scene) {
-	SKNode *ball = nil;
-	@try { ball = [scene valueForKey:@"ball"]; } @catch (id ex) {}
+	SKNode *ball = getGolfBallNode(scene);
 	if (!ball) return;
 
-	SKNode *hole = nil;
-	@try { hole = [scene valueForKey:@"hole"]; } @catch (id ex) {}
+	SKNode *hole = getGolfHoleNode(scene);
 	CGPoint holePos = hole ? hole.position : CGPointMake(scene.size.width * 0.5f, scene.size.height * 0.8f);
 
 	CGPoint ballPos = ball.position;
@@ -840,14 +871,14 @@ static void executeGolfAutoPuttStealth(SKScene *scene) {
 	CGPoint dragTouch = CGPointMake(ballPos.x - cosf(bestAngle) * dragDist, ballPos.y - sinf(bestAngle) * dragDist);
 
 	if ([scene respondsToSelector:@selector(touchDownAtPoint:)]) {
-		[scene performSelector:@selector(touchDownAtPoint:) withObject:[NSValue valueWithCGPoint:ballPos]];
+		((void (*)(id, SEL, CGPoint))objc_msgSend)(scene, @selector(touchDownAtPoint:), ballPos);
 	}
 	if ([scene respondsToSelector:@selector(touchMovedToPoint:)]) {
-		[scene performSelector:@selector(touchMovedToPoint:) withObject:[NSValue valueWithCGPoint:dragTouch]];
+		((void (*)(id, SEL, CGPoint))objc_msgSend)(scene, @selector(touchMovedToPoint:), dragTouch);
 	}
 	dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.08 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
 		if ([scene respondsToSelector:@selector(touchUpAtPoint:)]) {
-			[scene performSelector:@selector(touchUpAtPoint:) withObject:[NSValue valueWithCGPoint:dragTouch]];
+			((void (*)(id, SEL, CGPoint))objc_msgSend)(scene, @selector(touchUpAtPoint:), dragTouch);
 		}
 	});
 }
@@ -876,8 +907,7 @@ static void executeGolfAutoPuttStealth(SKScene *scene) {
 - (void)touchMovedToPoint:(CGPoint)pt {
 	%orig;
 	if (golfTrajectoryMap) {
-		SKNode *ball = nil;
-		@try { ball = [self valueForKey:@"ball"]; } @catch (id ex) {}
+		SKNode *ball = getGolfBallNode(self);
 		if (ball) {
 			CGPoint drag = CGPointMake(pt.x - ball.position.x, pt.y - ball.position.y);
 			updateGolfTrajectoryMap(self, drag);
@@ -894,6 +924,24 @@ static void executeGolfAutoPuttStealth(SKScene *scene) {
 %new
 - (void)autoShootHoleInOne {
 	executeGolfAutoPuttStealth(self);
+}
+
+%new
+- (void)instantSinkInCup {
+	SKNode *ball = getGolfBallNode(self);
+	SKNode *hole = getGolfHoleNode(self);
+	if (!ball || !hole) return;
+	ball.position = hole.position;
+	if (ball.physicsBody) {
+		ball.physicsBody.velocity = CGVectorMake(0.0f, 0.0f);
+	}
+	@try {
+		[ball setValue:@(true) forKey:@"inside"];
+		[ball setValue:@(true) forKey:@"hole"];
+	} @catch (id ex) {}
+	if ([self respondsToSelector:@selector(testWin)]) {
+		[self testWin];
+	}
 }
 %end
 
@@ -1007,12 +1055,46 @@ static BeerView *gCurrentBeerView = nil;
 	NSArray *ships = nil;
 	@try { ships = [self valueForKey:@"ships"]; } @catch (id ex) {}
 	if (!ships) return;
-	for (SeaShip *ship in ships) {
-		ship.sprite.hidden = false;
-		CGPoint pt = ship.sprite.position;
-		if ([self respondsToSelector:@selector(touchDownAtPoint:)]) {
-			[self performSelector:@selector(touchDownAtPoint:) withObject:[NSValue valueWithCGPoint:pt]];
+	for (id ship in ships) {
+		@try {
+			[ship setValue:@(NO) forKey:@"hidden"];
+			if ([ship respondsToSelector:@selector(Die)]) {
+				[ship Die];
+			}
+			SKNode *sprite = [ship valueForKey:@"sprite"];
+			if (sprite) {
+				sprite.hidden = NO;
+				CGPoint pt = sprite.position;
+				if ([self respondsToSelector:@selector(BombTo:)]) {
+					((void (*)(id, SEL, CGPoint))objc_msgSend)(self, @selector(BombTo:), pt);
+				}
+			}
+		} @catch (id ex) {}
+	}
+	@try {
+		if ([self respondsToSelector:@selector(checkWin)]) {
+			[self checkWin];
 		}
+	} @catch (id ex) {}
+}
+
+%new
+- (void)strikeNextEnemyShip {
+	NSArray *ships = nil;
+	@try { ships = [self valueForKey:@"ships"]; } @catch (id ex) {}
+	if (!ships) return;
+	for (id ship in ships) {
+		@try {
+			SKNode *sprite = [ship valueForKey:@"sprite"];
+			if (sprite && sprite.hidden) {
+				sprite.hidden = NO;
+				CGPoint pt = sprite.position;
+				if ([self respondsToSelector:@selector(BombTo:)]) {
+					((void (*)(id, SEL, CGPoint))objc_msgSend)(self, @selector(BombTo:), pt);
+				}
+				break;
+			}
+		} @catch (id ex) {}
 	}
 }
 %end
@@ -1103,66 +1185,21 @@ static BeerView *gCurrentBeerView = nil;
 %end
 
 %hook HuntScene
-%property (nonatomic, retain) UIButton *hunt_revealWordsButton;
-- (void)startGame {
-	%orig;
-
-	if (floatingHUD) {
-		[SeagullHUD attachToView:self.view gameType:@"Word Hunt" target:self];
-	}
-
-	if (revealWords) {
-		CGFloat pos = ((SKSpriteNode*)[self valueForKey:@"score_bg"]).size.height + self.view.safeAreaInsets.top;
-		self.hunt_revealWordsButton = makeButton(@"Reveal Words", CGRectMake([UIScreen mainScreen].bounds.size.width / 2 - 50, pos, 100, 40), self, @selector(hunt_revealWords));
-		[self.view addSubview:self.hunt_revealWordsButton];
-		[self.view bringSubviewToFront:self.hunt_revealWordsButton];
-	}
-}
-
-- (void)toResult {
-	%orig;
-	[self.hunt_revealWordsButton removeFromSuperview];
-}
-
-%new
-- (void)hunt_revealWords {
-	[self revealWords:YES];
-	NSArray *words = [[[[self valueForKey:@"wordList"] valueForKey:@"words_string"] stringByReplacingOccurrencesOfString:@"?" withString:@""] componentsSeparatedByString:@"|"];
-	NSMutableArray *validWords = [[NSMutableArray alloc] init];
-	for (NSString *word in words) {
-		if ([self checkWord:word flag:0]) {
-			[validWords addObject:word];
-		}
-	}
-
-	showWordList(self.view, @"Word Hunt", validWords);
-}
-
-%new
-- (void)revealAllWordsInSheet {
-	[self hunt_revealWords];
-}
-
-%new
-- (void)winGame {
-	NSArray *words = [[[[self valueForKey:@"wordList"] valueForKey:@"words_string"] stringByReplacingOccurrencesOfString:@"?" withString:@""] componentsSeparatedByString:@"|"];
-	for (NSString *word in words) {
-		if ([self checkWord:word flag:0]) {
-			// Solved
-		}
-	}
-}
-%end
-
-%hook BitesScene
 %property (nonatomic, retain) NSArray *words;
-%property (nonatomic, retain) UIButton *bites_revealButton;
-%property (nonatomic, retain) UIButton *bites_autoButton;
+%property (nonatomic, retain) UIButton *hunt_revealWordsButton;
+%property (nonatomic, retain) UIButton *hunt_autoButton;
 
 - (void)didMoveToView:(id)arg1 {
 	%orig;
+	NSString *gameName = @"Word Hunt";
+	@try {
+		if ([self respondsToSelector:@selector(getBiteGrid:y:)] || [self valueForKey:@"bytes"] != nil) {
+			gameName = @"Word Bites";
+		}
+	} @catch (id ex) {}
+
 	if (floatingHUD) {
-		[SeagullHUD attachToView:self.view gameType:@"Word Bites" target:self];
+		[SeagullHUD attachToView:self.view gameType:gameName target:self];
 	}
 
 	if (revealWords) {
@@ -1170,13 +1207,13 @@ static BeerView *gCurrentBeerView = nil;
 		if (@available(iOS 11.0, *)) {
 			topInset = self.view.safeAreaInsets.top + 10.0;
 		}
-		self.bites_revealButton = makeButton(@"Words", CGRectMake([UIScreen mainScreen].bounds.size.width - 90, topInset, 75, 36), self, @selector(revealAllWordsInSheet));
-		[self.view addSubview:self.bites_revealButton];
-		[self.view bringSubviewToFront:self.bites_revealButton];
+		self.hunt_revealWordsButton = makeButton(@"Words", CGRectMake([UIScreen mainScreen].bounds.size.width - 90, topInset, 75, 36), self, @selector(revealAllWordsInSheet));
+		[self.view addSubview:self.hunt_revealWordsButton];
+		[self.view bringSubviewToFront:self.hunt_revealWordsButton];
 
-		self.bites_autoButton = makeButton(@"Auto", CGRectMake([UIScreen mainScreen].bounds.size.width - 170, topInset, 75, 36), self, @selector(winGame));
-		[self.view addSubview:self.bites_autoButton];
-		[self.view bringSubviewToFront:self.bites_autoButton];
+		self.hunt_autoButton = makeButton(@"Auto", CGRectMake([UIScreen mainScreen].bounds.size.width - 170, topInset, 75, 36), self, @selector(solveAndSubmitAllWords));
+		[self.view addSubview:self.hunt_autoButton];
+		[self.view bringSubviewToFront:self.hunt_autoButton];
 	}
 }
 
@@ -1187,29 +1224,47 @@ static BeerView *gCurrentBeerView = nil;
 	} @catch (id ex) {}
 }
 
-%new
-- (void)revealAllWordsInSheet {
-	if (!self.words) {
-		@try {
-			self.words = [[[[self valueForKey:@"wordList"] valueForKey:@"words_string"] stringByReplacingOccurrencesOfString:@"?" withString:@""] componentsSeparatedByString:@"|"];
-		} @catch (id ex) {}
-	}
-	showWordList(self.view, @"Word Bites", self.words ?: @[]);
+- (void)toResult {
+	%orig;
+	[self.hunt_revealWordsButton removeFromSuperview];
+	[self.hunt_autoButton removeFromSuperview];
 }
 
 %new
-- (void)winGame {
+- (void)revealAllWordsInSheet {
+	[self revealWords:YES];
 	if (!self.words || self.words.count == 0) {
 		@try {
 			self.words = [[[[self valueForKey:@"wordList"] valueForKey:@"words_string"] stringByReplacingOccurrencesOfString:@"?" withString:@""] componentsSeparatedByString:@"|"];
 		} @catch (id ex) {}
 	}
-	if (!self.words) return;
-	for (NSString *w in self.words) {
-		if ([self respondsToSelector:@selector(checkWord:flag:)]) {
-			[self performSelector:@selector(checkWord:flag:) withObject:w withObject:@(YES)];
+	showWordList(self.view, @"Words", self.words ?: @[]);
+}
+
+%new
+- (void)solveAndSubmitAllWords {
+	[self revealWords:YES];
+	if (!self.words || self.words.count == 0) {
+		@try {
+			self.words = [[[[self valueForKey:@"wordList"] valueForKey:@"words_string"] stringByReplacingOccurrencesOfString:@"?" withString:@""] componentsSeparatedByString:@"|"];
+		} @catch (id ex) {}
+	}
+	if (self.words) {
+		for (NSString *word in self.words) {
+			@try {
+				if ([self respondsToSelector:@selector(checkWord:flag:)]) {
+					[self checkWord:word flag:0];
+				} else if ([self respondsToSelector:@selector(checkWord:)]) {
+					[self checkWord:word];
+				}
+			} @catch (id ex) {}
 		}
 	}
+	@try {
+		if ([self respondsToSelector:@selector(winGame)]) {
+			[self winGame];
+		}
+	} @catch (id ex) {}
 }
 %end
 
@@ -1509,14 +1564,44 @@ IMPLEMENT_BASKETBALL_HOOK(BasketScene)
 	}
 }
 
-- (void)update:(double)arg1 {
+- (void)touchMovedToPoint:(CGPoint)pt {
 	%orig;
-	updateGolfTrajectoryMap((SKScene *)self);
+	if (golfTrajectoryMap) {
+		SKNode *ball = getGolfBallNode((SKScene *)self);
+		if (ball) {
+			CGPoint drag = CGPointMake(pt.x - ball.position.x, pt.y - ball.position.y);
+			updateGolfTrajectoryMap((SKScene *)self, drag);
+		}
+	}
+}
+
+- (void)touchUpAtPoint:(CGPoint)pt {
+	%orig;
+	SKNode *traj = [(SKScene *)self childNodeWithName:@"gp_golf_traj"];
+	if (traj) traj.hidden = YES;
 }
 
 %new
 - (void)autoShootHoleInOne {
 	executeGolfAutoPuttStealth((SKScene *)self);
+}
+
+%new
+- (void)instantSinkInCup {
+	SKNode *ball = getGolfBallNode((SKScene *)self);
+	SKNode *hole = getGolfHoleNode((SKScene *)self);
+	if (!ball || !hole) return;
+	ball.position = hole.position;
+	if (ball.physicsBody) {
+		ball.physicsBody.velocity = CGVectorMake(0.0f, 0.0f);
+	}
+	@try {
+		[ball setValue:@(true) forKey:@"inside"];
+		[ball setValue:@(true) forKey:@"hole"];
+	} @catch (id ex) {}
+	if ([self respondsToSelector:@selector(testWin)]) {
+		[self testWin];
+	}
 }
 %end
 
@@ -1788,6 +1873,93 @@ IMPLEMENT_BASKETBALL_HOOK(BasketScene)
 }
 %end
 
+%hook PokerScene
+- (void)didMoveToView:(id)arg1 {
+	%orig;
+	if (floatingHUD) {
+		[SeagullHUD attachToView:self.view gameType:@"Poker" target:self];
+	}
+}
+
+- (void)update:(double)arg1 {
+	%orig;
+	if (pokerCardESP) {
+		[self espRevealOpponentCards];
+	}
+}
+
+%new
+- (void)espRevealOpponentCards {
+	@try {
+		id c1 = [self valueForKey:@"enemy_card1"];
+		if (c1) {
+			[c1 setValue:@(NO) forKey:@"secret"];
+			if ([c1 respondsToSelector:@selector(updateTexture)]) [c1 updateTexture];
+		}
+		id c2 = [self valueForKey:@"enemy_card2"];
+		if (c2) {
+			[c2 setValue:@(NO) forKey:@"secret"];
+			if ([c2 respondsToSelector:@selector(updateTexture)]) [c2 updateTexture];
+		}
+	} @catch (id ex) {}
+}
+
+%new
+- (void)instantWinPot {
+	@try {
+		if ([self respondsToSelector:@selector(ActionWin)]) {
+			[self ActionWin];
+		} else if ([self respondsToSelector:@selector(WinAll1)]) {
+			[self WinAll1];
+		}
+	} @catch (id ex) {}
+}
+
+%new
+- (void)showWinningCombos {
+	@try {
+		if ([self respondsToSelector:@selector(ShowCombos)]) {
+			[self ShowCombos];
+		}
+	} @catch (id ex) {}
+}
+%end
+
+%hook QuestionsScene
+- (void)didMoveToView:(id)arg1 {
+	%orig;
+	if (floatingHUD) {
+		[SeagullHUD attachToView:self.view gameType:@"20 Questions" target:self];
+	}
+}
+
+%new
+- (void)revealSecretWord {
+	@try {
+		SKLabelNode *wordLabel = [self valueForKey:@"word"];
+		NSString *secret = wordLabel ? [wordLabel text] : nil;
+		if (!secret || secret.length == 0) {
+			SKLabelNode *yourLabel = [self valueForKey:@"your"];
+			secret = yourLabel ? [yourLabel text] : @"Unknown";
+		}
+		
+		UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"🔍 Secret Word" message:[NSString stringWithFormat:@"The Secret Word is: %@", secret] preferredStyle:UIAlertControllerStyleAlert];
+		[alert addAction:[UIAlertAction actionWithTitle:@"Got it" style:UIAlertActionStyleDefault handler:nil]];
+		UIViewController *root = [UIApplication sharedApplication].keyWindow.rootViewController;
+		[root presentViewController:alert animated:YES completion:nil];
+	} @catch (id ex) {}
+}
+
+%new
+- (void)autoGuessWord {
+	@try {
+		if ([self respondsToSelector:@selector(SendGuessed)]) {
+			[self SendGuessed];
+		}
+	} @catch (id ex) {}
+}
+%end
+
 %hook GameIcon
 - (void)setWins:(int)arg1 {
 	NSString *wins = getPreferences()[self._id];
@@ -1875,6 +2047,8 @@ static void loadPrefs(void) {
 	paintESP = boolForKey(@"kPaintESP");
 	shuffleGuide = boolForKey(@"kShuffleGuide");
 	knockSuperImpulse = boolForKey(@"kKnockSuperImpulse");
+	pokerCardESP = boolForKey(@"kPokerCardESP");
+	questionsESP = boolForKey(@"kQuestionsESP");
 }
 
 static void prefsNotificationCallback(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
