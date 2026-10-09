@@ -30,11 +30,16 @@ elif [ -d "$SCRIPT_DIR/packages" ] && [ "$(ls -A "$SCRIPT_DIR/packages" 2>/dev/n
 fi
 
 # 2. Download template IPA if needed
+CUSTOM_IPA="${1:-}"
 TEMPLATE_IPA="$WORK_DIR/template.ipa"
-echo "[+] Fetching base GamePigeon / GameSeagull TrollStore container..."
-if [ -f "/tmp/inspect_ipa/GameSeagull.ipa" ]; then
+if [ -n "$CUSTOM_IPA" ] && [ -f "$CUSTOM_IPA" ]; then
+    echo "[+] Using user-provided GamePigeon IPA: $CUSTOM_IPA"
+    cp "$CUSTOM_IPA" "$TEMPLATE_IPA"
+elif [ -f "/tmp/inspect_ipa/GameSeagull.ipa" ]; then
+    echo "[+] Using cached base GameSeagull container..."
     cp "/tmp/inspect_ipa/GameSeagull.ipa" "$TEMPLATE_IPA"
 else
+    echo "[+] Fetching base GamePigeon / GameSeagull TrollStore container..."
     curl -sSL -L -o "$TEMPLATE_IPA" "$BASE_IPA_URL"
 fi
 
