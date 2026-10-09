@@ -108,15 +108,44 @@ static CGFloat dotProduct(CGPoint a, CGPoint b) {
 	return a.x * b.x + a.y * b.y;
 }
 
+// ---- Pool ball/pocket discovery (2.0.13 has no balls/pockets arrays) ----
+static NSArray *PoolAllBalls(SKScene *scene) {
+	NSMutableArray *out = [NSMutableArray array];
+	@try {
+		for (NSString *k in @[@"cue_ball", @"white", @"ball1", @"ball2", @"black_ball"]) {
+			id b = [scene valueForKey:k];
+			if (b && [b isKindOfClass:[SKNode class]] && ![out containsObject:b]) [out addObject:b];
+		}
+	} @catch (id ex) {}
+	@try {
+		Class poolBall = NSClassFromString(@"PoolBall");
+		NSArray *kids = [scene valueForKey:@"children"];
+		if ([kids isKindOfClass:[NSArray class]]) {
+			for (SKNode *n in kids) {
+				if (poolBall && [n isKindOfClass:poolBall] && ![out containsObject:n]) [out addObject:n];
+			}
+		}
+	} @catch (id ex) {}
+	return out;
+}
+
+static NSArray *PoolAllPockets(SKScene *scene) {
+	@try {
+		NSArray *holes = [scene valueForKey:@"holes"];
+		if ([holes isKindOfClass:[NSArray class]] && holes.count > 0) return holes;
+		NSArray *gh = [scene valueForKey:@"glow_holes"];
+		if ([gh isKindOfClass:[NSArray class]] && gh.count > 0) return gh;
+	} @catch (id ex) {}
+	return @[];
+}
+
 static void updateFullPoolTrajectory(SKScene *scene) {
 	if (!poolFullTrajectory) return;
 
-	NSArray *balls = nil;
-	@try { balls = [scene valueForKey:@"balls"]; } @catch (id ex) {}
+	NSArray *balls = PoolAllBalls(scene);
 	if (!balls || balls.count == 0) return;
 
-	NSArray *pockets = nil;
-	@try { pockets = [scene valueForKey:@"pockets"]; } @catch (id ex) {}
+	NSArray *pockets = PoolAllPockets(scene);
 
 	SKNode *cueBall = nil;
 	for (SKNode *b in balls) {
@@ -152,7 +181,16 @@ static void updateFullPoolTrajectory(SKScene *scene) {
 			float theta = [angleVal floatValue];
 			shotDir = CGPointMake(cosf(theta), sinf(theta));
 		} else {
-			return;
+			// 2.0.13 has no angle ivar: fall back to aim direction vector
+			@try {
+				id dir = [scene valueForKey:@"direction"];
+				if ([dir isKindOfClass:[NSValue class]]) {
+					CGPoint dp = CGPointZero;
+					[dir getValue:&dp];
+					if (hypot(dp.x, dp.y) > 0.001f) shotDir = dp;
+				}
+			} @catch (id ex2) {}
+			if (hypot(shotDir.x, shotDir.y) < 2.0f) return;
 		}
 	}
 	CGPoint cueDir = normalizeVec(shotDir);
@@ -321,12 +359,10 @@ static void updateFullPoolTrajectory(SKScene *scene) {
 }
 
 static void executeBreakToOneTurnWin(SKScene *scene) {
-	NSArray *balls = nil;
-	@try { balls = [scene valueForKey:@"balls"]; } @catch (id ex) {}
+	NSArray *balls = PoolAllBalls(scene);
 	if (!balls || balls.count < 6) return;
 
-	NSArray *pockets = nil;
-	@try { pockets = [scene valueForKey:@"pockets"]; } @catch (id ex) {}
+	NSArray *pockets = PoolAllPockets(scene);
 	if (!pockets || pockets.count < 6) return;
 
 	int pocketIdx = 0;
@@ -380,9 +416,9 @@ static void PoolUpdate(SKScene *scene) {
 	}
 	if (poolPocketAssist) {
 		@try {
-			NSArray *balls = [scene valueForKey:@"balls"];
-			NSArray *pockets = [scene valueForKey:@"pockets"];
-			if (balls && pockets) {
+			NSArray *balls = PoolAllBalls(scene);
+			NSArray *pockets = PoolAllPockets(scene);
+			if (balls.count > 0 && pockets.count > 0) {
 				for (SKNode *b in balls) {
 					if (!b.physicsBody) { continue; }
 					CGVector vel = b.physicsBody.velocity;
@@ -403,10 +439,8 @@ static void PoolHideTraj(SKScene *scene) {
 }
 
 static void PoolAutoAimBestBall(SKScene *scene) {
-	NSArray *balls = nil;
-	@try { balls = [scene valueForKey:@"balls"]; } @catch (id ex) {}
-	NSArray *pockets = nil;
-	@try { pockets = [scene valueForKey:@"pockets"]; } @catch (id ex) {}
+	NSArray *balls = PoolAllBalls(scene);
+	NSArray *pockets = PoolAllPockets(scene);
 	SKNode *cueBall = nil;
 	for (SKNode *b in balls) {
 		int num = -1;
@@ -832,7 +866,7 @@ static void PoolInstantWin(SKScene *scene) {
 		if (golfLegitMode) {
 			id strokesVal = nil;
 			@try {
-				strokesVal = [self valueForKey:@"strokes"];
+				strokesVal = [self.scene valueForKey:@"strokes"];
 			} @catch (id ex) {}
 			int strokes = strokesVal ? [strokesVal intValue] : 0;
 			return (strokes >= 2) ? true : %orig;
@@ -847,7 +881,7 @@ static void PoolInstantWin(SKScene *scene) {
 		if (golfLegitMode) {
 			id strokesVal = nil;
 			@try {
-				strokesVal = [self valueForKey:@"strokes"];
+				strokesVal = [self.scene valueForKey:@"strokes"];
 			} @catch (id ex) {}
 			int strokes = strokesVal ? [strokesVal intValue] : 0;
 			return (strokes >= 2) ? true : %orig;
@@ -1478,7 +1512,7 @@ static void ConnectDidMoveToView(SKScene *scene, id target) {
 
 static void ConnectUpdateMinimaxOverlay(SKScene *scene) {
 	NSArray *gridArr = nil;
-	@try { gridArr = [scene valueForKey:@"grid"]; } @catch (id ex) {}
+	@try { gridArr = [scene valueForKey:@"board"]; } @catch (id ex) {}
 	int grid[6][7] = {0};
 	if (gridArr && gridArr.count >= 6) {
 		for (int r = 0; r < 6; r++) {
@@ -1531,7 +1565,7 @@ static void ConnectUpdateMinimaxOverlay(SKScene *scene) {
 %new
 - (void)autoPlayBestConnectMove {
 	NSArray *gridArr = nil;
-	@try { gridArr = [self valueForKey:@"grid"]; } @catch (id ex) {}
+	@try { gridArr = [self valueForKey:@"board"]; } @catch (id ex) {}
 	int grid[6][7] = {0};
 	if (gridArr && gridArr.count >= 6) {
 		for (int r = 0; r < 6; r++) {
@@ -1575,9 +1609,14 @@ static void ConnectUpdateMinimaxOverlay(SKScene *scene) {
 }
 %new
 - (void)updateMancalaOverlay {
-	NSArray *pitsArr = nil;
-	@try { pitsArr = [self valueForKey:@"pits"]; } @catch (id ex) {}
-	if (!pitsArr || pitsArr.count < 14) return;
+	NSMutableArray *pitsArr = [NSMutableArray array];
+	@try {
+		NSArray *s1 = [self valueForKey:@"spots1"];
+		NSArray *s2 = [self valueForKey:@"spots2"];
+		if ([s1 isKindOfClass:[NSArray class]]) [pitsArr addObjectsFromArray:s1];
+		if ([s2 isKindOfClass:[NSArray class]]) [pitsArr addObjectsFromArray:s2];
+	} @catch (id ex) {}
+	if (pitsArr.count < 14) return;
 
 	int board[14] = {0};
 	for (int i = 0; i < 14; i++) {
@@ -1612,9 +1651,14 @@ static void ConnectUpdateMinimaxOverlay(SKScene *scene) {
 }
 %new
 - (void)autoPlayBestMancalaMove {
-	NSArray *pitsArr = nil;
-	@try { pitsArr = [self valueForKey:@"pits"]; } @catch (id ex) {}
-	if (!pitsArr || pitsArr.count < 14) return;
+	NSMutableArray *pitsArr = [NSMutableArray array];
+	@try {
+		NSArray *s1 = [self valueForKey:@"spots1"];
+		NSArray *s2 = [self valueForKey:@"spots2"];
+		if ([s1 isKindOfClass:[NSArray class]]) [pitsArr addObjectsFromArray:s1];
+		if ([s2 isKindOfClass:[NSArray class]]) [pitsArr addObjectsFromArray:s2];
+	} @catch (id ex) {}
+	if (pitsArr.count < 14) return;
 	int board[14] = {0};
 	for (int i = 0; i < 14; i++) {
 		id p = pitsArr[i];
@@ -1656,6 +1700,16 @@ static void ConnectUpdateMinimaxOverlay(SKScene *scene) {
 	NSArray *lines = nil;
 	@try { lines = [self valueForKey:@"lines"]; } @catch (id ex) {}
 	if (!lines) return;
+	// 2.0.13 exposes no per-line box counts: skip coloring rather than mislabel
+	{
+		BOOL haveCounts = NO;
+		for (SKNode *ln in lines) {
+			if (ln.hidden == NO) continue;
+			@try { [ln valueForKey:@"boxA_count"]; haveCounts = YES; } @catch (id ex) {}
+			break;
+		}
+		if (!haveCounts) return;
+	}
 
 	for (SKNode *lineNode in lines) {
 		if (![lineNode respondsToSelector:@selector(hidden)] || lineNode.hidden == NO) continue;
@@ -1686,11 +1740,19 @@ static void ConnectUpdateMinimaxOverlay(SKScene *scene) {
 	SKNode *fallback = nil;
 	for (SKNode *lineNode in lines) {
 		if (lineNode.hidden == NO) continue;
-		int boxA = 0, boxB = 0;
+		int boxA = -1, boxB = -1;
 		@try {
 			boxA = [[lineNode valueForKey:@"boxA_count"] intValue];
 			boxB = [[lineNode valueForKey:@"boxB_count"] intValue];
 		} @catch (id ex) {}
+		if (boxA < 0) {
+			// 2.0.13 exposes no per-line counts: tap the first legal line
+			if ([self respondsToSelector:@selector(touchDownAtPoint:)]) {
+				[self touchDownAtPoint:lineNode.position];
+				[self touchUpAtPoint:lineNode.position];
+			}
+			return;
+		}
 		DotsLineQuality q = evaluateDotsLineQuality(boxA, boxB);
 		if (q == DOTS_MOVE_CAPTURE || q == DOTS_MOVE_DOUBLE) {
 			if ([self respondsToSelector:@selector(touchDownAtPoint:)]) {
@@ -1946,19 +2008,26 @@ static void BasketballAutoSwish(SKScene *scene) {
 	int myPlayer = 1;
 	@try {
 		myPlayer = [[self valueForKey:@"player"] intValue] ?: 1;
-		NSArray *pieces = [self valueForKey:@"board_pieces"];
-		if ([pieces isKindOfClass:[NSArray class]]) {
-			for (int r = 0; r < 8; r++) {
+		NSArray *rows = nil;
+		@try { rows = [self valueForKey:@"board"]; } @catch (id ex) {}
+		if ([rows isKindOfClass:[NSArray class]]) {
+			for (int r = 0; r < 8 && r < (int)rows.count; r++) {
+				id rowObj = rows[r];
+				NSArray *row = [rowObj isKindOfClass:[NSArray class]] ? rowObj : nil;
 				for (int c = 0; c < 8; c++) {
-					int idx = r * 8 + c;
-					if (idx < pieces.count) {
-						id p = pieces[idx];
-						if (p && ![p isEqual:[NSNull null]]) {
+					id p = nil;
+					if (row && c < (int)row.count) p = row[c];
+					else if (!row && (r * 8 + c) < (int)rows.count) p = rows[r * 8 + c];
+					if (!p || [p isEqual:[NSNull null]]) continue;
+					@try {
+						if ([p isKindOfClass:[NSNumber class]]) board[r][c] = [p intValue];
+						else {
 							int pl = [[p valueForKey:@"player"] intValue];
-							BOOL isKing = [[p valueForKey:@"isKing"] boolValue];
+							BOOL isKing = NO;
+							@try { isKing = [[p valueForKey:@"isKing"] boolValue]; } @catch (id ex2) {}
 							board[r][c] = pl + (isKing ? 2 : 0);
 						}
-					}
+					} @catch (id ex3) {}
 				}
 			}
 		}
@@ -2019,17 +2088,21 @@ static void BasketballAutoSwish(SKScene *scene) {
 	int myPlayer = 1;
 	@try {
 		myPlayer = [[self valueForKey:@"player"] intValue] ?: 1;
-		NSArray *boardPieces = [self valueForKey:@"board_pieces"];
-		if ([boardPieces isKindOfClass:[NSArray class]]) {
-			for (int r = 0; r < 8; r++) {
+		NSArray *rows = nil;
+		@try { rows = [self valueForKey:@"board"]; } @catch (id ex) {}
+		if ([rows isKindOfClass:[NSArray class]]) {
+			for (int r = 0; r < 8 && r < (int)rows.count; r++) {
+				id rowObj = rows[r];
+				NSArray *row = [rowObj isKindOfClass:[NSArray class]] ? rowObj : nil;
 				for (int c = 0; c < 8; c++) {
-					int idx = r * 8 + c;
-					if (idx < boardPieces.count) {
-						id p = boardPieces[idx];
-						if (p && ![p isEqual:[NSNull null]]) {
-							board[r][c] = [[p valueForKey:@"player"] intValue];
-						}
-					}
+					id p = nil;
+					if (row && c < (int)row.count) p = row[c];
+					else if (!row && (r * 8 + c) < (int)rows.count) p = rows[r * 8 + c];
+					if (!p || [p isEqual:[NSNull null]]) continue;
+					@try {
+						if ([p isKindOfClass:[NSNumber class]]) board[r][c] = [p intValue];
+						else board[r][c] = [[p valueForKey:@"player"] intValue];
+					} @catch (id ex2) {}
 				}
 			}
 		}

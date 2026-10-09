@@ -164,7 +164,7 @@
 - (bool)isBlack;
 @end
 
-@interface GolfBall : NSObject
+@interface GolfBall : SKNode
 @property (assign) int strokeCount;
 - (bool)inside;
 - (bool)hole;
