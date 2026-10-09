@@ -160,18 +160,28 @@ NSDictionary *getPreferences(void) {
 
 bool boolForKey(NSString *key) {
     NSDictionary *prefs = getPreferences();
-    if (!prefs) return false;
-
-    id val = prefs[key];
-    return val ? [val boolValue] : false;
+    if (prefs && prefs[key]) {
+        return [prefs[key] boolValue];
+    }
+    // Sideloaded / TrollStore fallback
+    id userDefaultVal = [[NSUserDefaults standardUserDefaults] objectForKey:key];
+    if (userDefaultVal) {
+        return [userDefaultVal boolValue];
+    }
+    return false;
 }
 
 int intForKey(NSString *key, int defaultVal) {
     NSDictionary *prefs = getPreferences();
-    if (!prefs) return defaultVal;
-
-    id val = prefs[key];
-    return val ? [val intValue] : defaultVal;
+    if (prefs && prefs[key]) {
+        return [prefs[key] intValue];
+    }
+    // Sideloaded / TrollStore fallback
+    id userDefaultVal = [[NSUserDefaults standardUserDefaults] objectForKey:key];
+    if (userDefaultVal) {
+        return [userDefaultVal intValue];
+    }
+    return defaultVal;
 }
 
 UIButton *makeButton(NSString *title, CGRect frame, id target, SEL selector) {
@@ -233,6 +243,11 @@ SCNVector3 getAimbotPos(int multiplier, int number) {
 void setBoolForKey(NSString *key, bool value) {
     CFPreferencesSetAppValue((__bridge CFStringRef)key, value ? kCFBooleanTrue : kCFBooleanFalse, CFSTR("com.fiore.gameseagull.prefs"));
     CFPreferencesAppSynchronize(CFSTR("com.fiore.gameseagull.prefs"));
+
+    // Also write to standardUserDefaults for TrollStore/sideloading!
+    [[NSUserDefaults standardUserDefaults] setBool:value forKey:key];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+
     reloadPreferences();
     CFNotificationCenterPostNotification(
         CFNotificationCenterGetDarwinNotifyCenter(),
@@ -246,6 +261,11 @@ void setIntForKey(NSString *key, int value) {
     CFPreferencesSetAppValue((__bridge CFStringRef)key, num, CFSTR("com.fiore.gameseagull.prefs"));
     if (num) CFRelease(num);
     CFPreferencesAppSynchronize(CFSTR("com.fiore.gameseagull.prefs"));
+
+    // Also write to standardUserDefaults for TrollStore/sideloading!
+    [[NSUserDefaults standardUserDefaults] setInteger:value forKey:key];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+
     reloadPreferences();
     CFNotificationCenterPostNotification(
         CFNotificationCenterGetDarwinNotifyCenter(),

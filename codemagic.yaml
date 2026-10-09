@@ -27,6 +27,13 @@ workflows:
           chmod +x ./build_release.sh
           ./build_release.sh
 
+      - name: Build TrollStore IPA
+        script: |
+          set -e
+          chmod +x ./package_trollstore.sh
+          ./package_trollstore.sh
+
     artifacts:
       - build/*.deb
       - packages/*.deb
+      - build/*.ipa

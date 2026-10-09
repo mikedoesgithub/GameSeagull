@@ -31,10 +31,16 @@ jobs:
           chmod +x ./build_release.sh
           ./build_release.sh
 
-      - name: Upload Built Deb Packages
+      - name: Build TrollStore IPA (.ipa)
+        run: |
+          chmod +x ./package_trollstore.sh
+          ./package_trollstore.sh
+
+      - name: Upload Built Packages & IPA
         uses: actions/upload-artifact@v4
         with:
           name: GameSeagull-Packages
           path: |
             build/*.deb
             packages/*.deb
+            build/*.ipa
