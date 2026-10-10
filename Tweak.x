@@ -109,6 +109,25 @@ static CGFloat dotProduct(CGPoint a, CGPoint b) {
 }
 
 // ---- Pool ball/pocket discovery (2.0.13 has no balls/pockets arrays) ----
+static CGPoint PoolScenePoint(SKScene *scene, SKNode *node) {
+	CGPoint p = node.position;
+	@try {
+		if (node.parent && node.scene == scene) p = [scene convertPoint:CGPointZero fromNode:node];
+	} @catch (id ex) {}
+	return p;
+}
+
+static void PoolCollectBalls(SKScene *scene, SKNode *root, NSMutableArray *out, Class poolBall) {
+	@try {
+		NSArray *kids = [root valueForKey:@"children"];
+		if (![kids isKindOfClass:[NSArray class]]) return;
+		for (SKNode *n in kids) {
+			if (poolBall && [n isKindOfClass:poolBall] && ![out containsObject:n]) [out addObject:n];
+			PoolCollectBalls(scene, n, out, poolBall);
+		}
+	} @catch (id ex) {}
+}
+
 static NSArray *PoolAllBalls(SKScene *scene) {
 	NSMutableArray *out = [NSMutableArray array];
 	@try {
@@ -117,15 +136,7 @@ static NSArray *PoolAllBalls(SKScene *scene) {
 			if (b && [b isKindOfClass:[SKNode class]] && ![out containsObject:b]) [out addObject:b];
 		}
 	} @catch (id ex) {}
-	@try {
-		Class poolBall = NSClassFromString(@"PoolBall");
-		NSArray *kids = [scene valueForKey:@"children"];
-		if ([kids isKindOfClass:[NSArray class]]) {
-			for (SKNode *n in kids) {
-				if (poolBall && [n isKindOfClass:poolBall] && ![out containsObject:n]) [out addObject:n];
-			}
-		}
-	} @catch (id ex) {}
+	PoolCollectBalls(scene, scene, out, NSClassFromString(@"PoolBall"));
 	return out;
 }
 
@@ -163,8 +174,8 @@ static void updateFullPoolTrajectory(SKScene *scene) {
 	@try { canvas = [scene valueForKey:@"canvas"]; } @catch (id ex) {}
 	if (!canvas || !canvas.path) return;
 
-	__block CGPoint firstPt = cueBall.position;
-	__block CGPoint lastPt = cueBall.position;
+	__block CGPoint firstPt = PoolScenePoint(scene, cueBall);
+	__block CGPoint lastPt = PoolScenePoint(scene, cueBall);
 	CGPathApplyWithBlock(canvas.path, ^(const CGPathElement *element) {
 		if (element->type == kCGPathElementMoveToPoint) {
 			firstPt = element->points[0];
@@ -172,6 +183,9 @@ static void updateFullPoolTrajectory(SKScene *scene) {
 			lastPt = element->points[0];
 		}
 	});
+	// Canvas path lives in the canvas node's space: convert to scene space
+	firstPt = [scene convertPoint:firstPt fromNode:canvas];
+	lastPt = [scene convertPoint:lastPt fromNode:canvas];
 
 	CGPoint shotDir = CGPointMake(lastPt.x - firstPt.x, lastPt.y - firstPt.y);
 	if (hypot(shotDir.x, shotDir.y) < 2.0f) {
@@ -183,11 +197,13 @@ static void updateFullPoolTrajectory(SKScene *scene) {
 		} else {
 			// 2.0.13 has no angle ivar: fall back to aim direction vector
 			@try {
-				id dir = [scene valueForKey:@"direction"];
-				if ([dir isKindOfClass:[NSValue class]]) {
-					CGPoint dp = CGPointZero;
-					[dir getValue:&dp];
-					if (hypot(dp.x, dp.y) > 0.001f) shotDir = dp;
+				for (NSString *dk in @[@"direction", @"start_direction", @"vec2"]) {
+					id dir = [scene valueForKey:dk];
+					if ([dir isKindOfClass:[NSValue class]]) {
+						CGPoint dp = CGPointZero;
+						[dir getValue:&dp];
+						if (hypot(dp.x, dp.y) > 0.001f) { shotDir = dp; break; }
+					}
 				}
 			} @catch (id ex2) {}
 			if (hypot(shotDir.x, shotDir.y) < 2.0f) return;
@@ -200,20 +216,25 @@ static void updateFullPoolTrajectory(SKScene *scene) {
 	if (pockets && pockets.count >= 4) {
 		minX = 1e9; maxX = -1e9; minY = 1e9; maxY = -1e9;
 		for (SKNode *pocket in pockets) {
-			if (pocket.position.x < minX) minX = pocket.position.x;
-			if (pocket.position.x > maxX) maxX = pocket.position.x;
-			if (pocket.position.y < minY) minY = pocket.position.y;
-			if (pocket.position.y > maxY) maxY = pocket.position.y;
+			CGPoint pp = PoolScenePoint(scene, pocket);
+			if (pp.x < minX) minX = pp.x;
+			if (pp.x > maxX) maxX = pp.x;
+			if (pp.y < minY) minY = pp.y;
+			if (pp.y > maxY) maxY = pp.y;
 		}
 	}
 	CGFloat R_ball = 15.0f;
+	@try {
+		float rv = [[scene valueForKey:@"rad"] floatValue];
+		if (rv >= 5.0f && rv <= 30.0f) R_ball = rv;
+	} @catch (id exRad) {}
+	CGPoint currentCuePos = PoolScenePoint(scene, cueBall);
 	CGFloat cushionLeft = minX + R_ball;
 	CGFloat cushionRight = maxX - R_ball;
 	CGFloat cushionBottom = minY + R_ball;
 	CGFloat cushionTop = maxY - R_ball;
 
 	CGMutablePathRef fullPath = CGPathCreateMutable();
-	CGPoint currentCuePos = cueBall.position;
 	CGPathMoveToPoint(fullPath, NULL, currentCuePos.x, currentCuePos.y);
 
 	int hitBallIndex = -1;
@@ -243,7 +264,7 @@ static void updateFullPoolTrajectory(SKScene *scene) {
 		for (int i = 0; i < (int)balls.count; i++) {
 			SKNode *b = balls[i];
 			if (b == cueBall) continue;
-			CGPoint bPos = b.position;
+			CGPoint bPos = PoolScenePoint(scene, b);
 			CGPoint toBall = CGPointMake(bPos.x - currentCuePos.x, bPos.y - currentCuePos.y);
 			CGFloat proj = dotProduct(toBall, cueDir);
 			if (proj <= 0) continue;
@@ -264,8 +285,9 @@ static void updateFullPoolTrajectory(SKScene *scene) {
 			CGPathAddLineToPoint(fullPath, NULL, ballHitPos.x, ballHitPos.y);
 			CGPathAddArc(fullPath, NULL, ballHitPos.x, ballHitPos.y, R_ball, 0, M_PI * 2, YES);
 
-			SKNode *targetBall = balls[closestBallIdx];
-			ballHitNormal = normalizeVec(CGPointMake(targetBall.position.x - ballHitPos.x, targetBall.position.y - ballHitPos.y));
+		SKNode *targetBall = balls[closestBallIdx];
+		CGPoint targetBallPos = PoolScenePoint(scene, targetBall);
+		ballHitNormal = normalizeVec(CGPointMake(targetBallPos.x - ballHitPos.x, targetBallPos.y - ballHitPos.y));
 			break;
 		} else if (tCushion < 1e8) {
 			currentCuePos = CGPointMake(currentCuePos.x + cueDir.x * tCushion, currentCuePos.y + cueDir.y * tCushion);
@@ -279,7 +301,7 @@ static void updateFullPoolTrajectory(SKScene *scene) {
 
 	if (hitBallIndex >= 0) {
 		SKNode *targetBall = balls[hitBallIndex];
-		CGPoint targetPos = targetBall.position;
+		CGPoint targetPos = PoolScenePoint(scene, targetBall);
 		CGPoint targetDir = ballHitNormal;
 
 		CGPoint cueDeflect = normalizeVec(CGPointMake(cueDir.x - dotProduct(cueDir, ballHitNormal) * ballHitNormal.x,
@@ -292,13 +314,14 @@ static void updateFullPoolTrajectory(SKScene *scene) {
 		BOOL targetEntersPocket = NO;
 		if (pockets) {
 			for (SKNode *pocket in pockets) {
-				CGPoint toPocket = CGPointMake(pocket.position.x - targetPos.x, pocket.position.y - targetPos.y);
+				CGPoint pp = PoolScenePoint(scene, pocket);
+				CGPoint toPocket = CGPointMake(pp.x - targetPos.x, pp.y - targetPos.y);
 				CGFloat pProj = dotProduct(toPocket, targetDir);
 				if (pProj > 0) {
 					CGFloat perpSq = (toPocket.x * toPocket.x + toPocket.y * toPocket.y) - (pProj * pProj);
 					if (perpSq <= (32.0f * 32.0f)) {
-						CGPathAddLineToPoint(fullPath, NULL, pocket.position.x, pocket.position.y);
-						CGPathAddArc(fullPath, NULL, pocket.position.x, pocket.position.y, 20.0f, 0, M_PI * 2, YES);
+						CGPathAddLineToPoint(fullPath, NULL, pp.x, pp.y);
+						CGPathAddArc(fullPath, NULL, pp.x, pp.y, 20.0f, 0, M_PI * 2, YES);
 						targetEntersPocket = YES;
 						break;
 					}
@@ -313,7 +336,8 @@ static void updateFullPoolTrajectory(SKScene *scene) {
 				if (j == hitBallIndex) continue;
 				SKNode *b2 = balls[j];
 				if (b2 == cueBall) continue;
-				CGPoint toB2 = CGPointMake(b2.position.x - targetPos.x, b2.position.y - targetPos.y);
+				CGPoint b2Pos = PoolScenePoint(scene, b2);
+				CGPoint toB2 = CGPointMake(b2Pos.x - targetPos.x, b2Pos.y - targetPos.y);
 				CGFloat proj = dotProduct(toB2, targetDir);
 				if (proj <= 0) continue;
 				CGFloat perpSq = (toB2.x * toB2.x + toB2.y * toB2.y) - (proj * proj);
@@ -333,9 +357,10 @@ static void updateFullPoolTrajectory(SKScene *scene) {
 				CGPathAddArc(fullPath, NULL, secHitPos.x, secHitPos.y, R_ball, 0, M_PI * 2, YES);
 
 				SKNode *secBall = balls[secBallIdx];
-				CGPoint secNormal = normalizeVec(CGPointMake(secBall.position.x - secHitPos.x, secBall.position.y - secHitPos.y));
-				CGPathMoveToPoint(fullPath, NULL, secBall.position.x, secBall.position.y);
-				CGPathAddLineToPoint(fullPath, NULL, secBall.position.x + secNormal.x * 200.0f, secBall.position.y + secNormal.y * 200.0f);
+				CGPoint secPos = PoolScenePoint(scene, secBall);
+				CGPoint secNormal = normalizeVec(CGPointMake(secPos.x - secHitPos.x, secPos.y - secHitPos.y));
+				CGPathMoveToPoint(fullPath, NULL, secPos.x, secPos.y);
+				CGPathAddLineToPoint(fullPath, NULL, secPos.x + secNormal.x * 200.0f, secPos.y + secNormal.y * 200.0f);
 			} else {
 				CGFloat tCush = 350.0f;
 				CGPathAddLineToPoint(fullPath, NULL, targetPos.x + targetDir.x * tCush, targetPos.y + targetDir.y * tCush);
@@ -379,8 +404,10 @@ static void executeBreakToOneTurnWin(SKScene *scene) {
 		SKNode *targetPocket = pockets[pocketIdx % pockets.count];
 		pocketIdx++;
 
-		CGFloat dx = targetPocket.position.x - b.position.x;
-		CGFloat dy = targetPocket.position.y - b.position.y;
+		CGPoint bp = PoolScenePoint(scene, b);
+		CGPoint tp = PoolScenePoint(scene, targetPocket);
+		CGFloat dx = tp.x - bp.x;
+		CGFloat dy = tp.y - bp.y;
 		CGFloat dist = hypot(dx, dy);
 		if (dist > 1.0f) {
 			CGFloat speed = 1050.0f + (arc4random_uniform(150));
@@ -397,6 +424,53 @@ static void PoolDidMoveToView(SKScene *scene) {
 	if (floatingHUD) {
 		[SeagullHUD attachToView:scene.view gameType:@"8-Ball / 9-Ball Pool" target:scene];
 	}
+}
+
+// Extend the game's own guideline: draw a same-space continuation segment as
+// a child of the canvas (no binary patching, works on every game version).
+static void ExtendGameGuideline(SKScene *scene) {
+	SKShapeNode *canvas = nil;
+	@try { canvas = [scene valueForKey:@"canvas"]; } @catch (id ex) {}
+	if (!canvas || !canvas.path) return;
+	__block CGPoint segA = CGPointZero, segB = CGPointZero, cur = CGPointZero;
+	__block BOOL haveSeg = NO;
+	CGPathApplyWithBlock(canvas.path, ^(const CGPathElement *element) {
+		if (element->type == kCGPathElementMoveToPoint) cur = element->points[0];
+		else if (element->type == kCGPathElementAddLineToPoint) {
+			segA = cur; segB = element->points[0]; cur = segB; haveSeg = YES;
+		}
+		else if (element->type == kCGPathElementAddQuadCurveToPoint) cur = element->points[1];
+		else if (element->type == kCGPathElementAddCurveToPoint) cur = element->points[2];
+	});
+	if (!haveSeg) return;
+	CGPoint d = CGPointMake(segB.x - segA.x, segB.y - segA.y);
+	CGFloat len = hypot(d.x, d.y);
+	if (len < 1.0f) return;
+	// Only extend short guidelines: keeps this idempotent per frame.
+	if (len >= 400.0f) {
+		SKNode *old = [canvas childNodeWithName:@"gp_extend_line"];
+		if (old) old.hidden = YES;
+		return;
+	}
+	d.x /= len; d.y /= len;
+	CGPoint newEnd = CGPointMake(segA.x + d.x * 400.0f, segA.y + d.y * 400.0f);
+	SKShapeNode *ext = (SKShapeNode *)[canvas childNodeWithName:@"gp_extend_line"];
+	if (!ext) {
+		CGMutablePathRef empty = CGPathCreateMutable();
+		ext = [SKShapeNode shapeNodeWithPath:empty];
+		CGPathRelease(empty);
+		ext.name = @"gp_extend_line";
+		ext.lineWidth = 2.0f;
+		ext.strokeColor = [UIColor colorWithWhite:1.0 alpha:0.55];
+		ext.zPosition = 998;
+		[canvas addChild:ext];
+	}
+	CGMutablePathRef p = CGPathCreateMutable();
+	CGPathMoveToPoint(p, NULL, segB.x, segB.y);
+	CGPathAddLineToPoint(p, NULL, newEnd.x, newEnd.y);
+	ext.path = p;
+	ext.hidden = NO;
+	CGPathRelease(p);
 }
 
 static void PoolUpdate(SKScene *scene) {
@@ -424,13 +498,15 @@ static void PoolUpdate(SKScene *scene) {
 					CGVector vel = b.physicsBody.velocity;
 					CGFloat speed = hypot(vel.dx, vel.dy);
 					if (speed > 5.0f && speed < 800.0f) {
-						CGPoint p = applyPoolPocketMagnet(b.position, CGPointMake(vel.dx, vel.dy), pockets, 40.0f);
+						CGPoint bp2 = PoolScenePoint(scene, b);
+						CGPoint p = applyPoolPocketMagnet(bp2, CGPointMake(vel.dx, vel.dy), pockets, 40.0f);
 						b.physicsBody.velocity = CGVectorMake(p.x, p.y);
 					}
 				}
 			}
 		} @catch (id ex) {}
 	}
+	if (extendLines) ExtendGameGuideline(scene);
 }
 
 static void PoolHideTraj(SKScene *scene) {
@@ -452,7 +528,7 @@ static void PoolAutoAimBestBall(SKScene *scene) {
 	}
 	if (!cueBall && balls.count > 0) cueBall = balls[0];
 	if (!cueBall || !balls || !pockets) return;
-	CGFloat bestAngle = calculateBestPoolShotAngle(cueBall.position, balls, pockets, 15.0f);
+	CGFloat bestAngle = calculateBestPoolShotAngle(PoolScenePoint(scene, cueBall), balls, pockets, 15.0f);
 	@try {
 		[scene setValue:@(bestAngle) forKey:@"angle"];
 	} @catch (id ex) {}
@@ -907,6 +983,29 @@ static SKNode *getGolfHoleNode(SKScene *scene) {
 	return hole;
 }
 
+static CGPoint GolfScenePoint(SKScene *scene, SKNode *node) {
+	CGPoint p = node.position;
+	@try {
+		if (node.parent && node.scene == scene) p = [scene convertPoint:CGPointZero fromNode:node];
+	} @catch (id ex) {}
+	return p;
+}
+
+static void GolfPlayBounds(SKScene *scene, CGFloat *minX, CGFloat *maxX, CGFloat *minY, CGFloat *maxY) {
+	*minX = 25.0f; *maxX = scene.size.width - 25.0f;
+	*minY = 25.0f; *maxY = scene.size.height - 25.0f;
+	@try {
+		SKNode *ground = [scene valueForKey:@"ground"];
+		if (ground && ground.parent == scene) {
+			CGRect gf = ground.frame;
+			if (gf.size.width > 100.0f && gf.size.height > 100.0f) {
+				*minX = gf.origin.x + 12.0f; *maxX = gf.origin.x + gf.size.width - 12.0f;
+				*minY = gf.origin.y + 12.0f; *maxY = gf.origin.y + gf.size.height - 12.0f;
+			}
+		}
+	} @catch (id ex) {}
+}
+
 static void updateGolfTrajectoryMap(SKScene *scene, CGPoint dragVector) {
 	if (!golfTrajectoryMap) return;
 
@@ -914,13 +1013,13 @@ static void updateGolfTrajectoryMap(SKScene *scene, CGPoint dragVector) {
 	if (!ball) return;
 
 	SKNode *hole = getGolfHoleNode(scene);
-	CGPoint holePos = hole ? hole.position : CGPointMake(scene.size.width * 0.5f, scene.size.height * 0.8f);
+	CGPoint holePos = hole ? GolfScenePoint(scene, hole) : CGPointMake(scene.size.width * 0.5f, scene.size.height * 0.8f);
 
-	CGPoint p = ball.position;
+	CGPoint p = GolfScenePoint(scene, ball);
 	CGPoint v = CGPointMake(-dragVector.x * 4.2f, -dragVector.y * 4.2f);
 
-	CGFloat minX = 25.0f, maxX = scene.size.width - 25.0f;
-	CGFloat minY = 25.0f, maxY = scene.size.height - 25.0f;
+	CGFloat minX, maxX, minY, maxY;
+	GolfPlayBounds(scene, &minX, &maxX, &minY, &maxY);
 
 	CGMutablePathRef golfPath = CGPathCreateMutable();
 	CGPathMoveToPoint(golfPath, NULL, p.x, p.y);
@@ -967,22 +1066,23 @@ static void executeGolfAutoPuttStealth(SKScene *scene) {
 	if (!ball) return;
 
 	SKNode *hole = getGolfHoleNode(scene);
-	CGPoint holePos = hole ? hole.position : CGPointMake(scene.size.width * 0.5f, scene.size.height * 0.8f);
+	CGPoint holePos = hole ? GolfScenePoint(scene, hole) : CGPointMake(scene.size.width * 0.5f, scene.size.height * 0.8f);
 
-	CGPoint ballPos = ball.position;
+	CGPoint ballPos = GolfScenePoint(scene, ball);
 	CGFloat bestAngle = 0.0f;
 	CGFloat bestPower = 0.5f;
 	CGFloat minFinalDist = 1e9;
 	BOOL foundHoleInOne = NO;
 
-	CGFloat minX = 25.0f, maxX = scene.size.width - 25.0f;
-	CGFloat minY = 25.0f, maxY = scene.size.height - 25.0f;
+	CGFloat minX, maxX, minY, maxY;
+	GolfPlayBounds(scene, &minX, &maxX, &minY, &maxY);
 
 	for (int a = 0; a < 72; a++) {
 		CGFloat theta = (a * 5.0f) * (M_PI / 180.0f);
 		for (CGFloat pwr = 0.35f; pwr <= 1.0f; pwr += 0.15f) {
 			CGPoint p = ballPos;
-			CGPoint v = CGPointMake(cosf(theta) * pwr * 800.0f, sinf(theta) * pwr * 800.0f);
+			// Must match execution: dragDist 90 * preview factor 4.2
+			CGPoint v = CGPointMake(cosf(theta) * pwr * 378.0f, sinf(theta) * pwr * 378.0f);
 
 			for (int step = 0; step < 160; step++) {
 				p.x += v.x * 0.016f;
@@ -1039,9 +1139,10 @@ static void executeGolfAutoPuttStealth(SKScene *scene) {
 		[SeagullHUD attachToView:self.view gameType:@"Mini Golf" target:self];
 	}
 
-	if (golfAutoPuttStealth) {
+	if (golfAutoPuttStealth && ![self.view viewWithTag:99101]) {
 		CGFloat topInset = self.view.safeAreaInsets.top + 10.0;
 		self.golfAutoButton = makeButton(@"Auto Putt", CGRectMake([UIScreen mainScreen].bounds.size.width / 2 - 50, topInset, 100, 36), self, @selector(autoShootHoleInOne));
+		self.golfAutoButton.tag = 99101;
 		[self.view addSubview:self.golfAutoButton];
 		[self.view bringSubviewToFront:self.golfAutoButton];
 	}
@@ -1052,7 +1153,8 @@ static void executeGolfAutoPuttStealth(SKScene *scene) {
 	if (golfTrajectoryMap) {
 		SKNode *ball = getGolfBallNode(self);
 		if (ball) {
-			CGPoint drag = CGPointMake(pt.x - ball.position.x, pt.y - ball.position.y);
+			CGPoint bp = GolfScenePoint(self, ball);
+			CGPoint drag = CGPointMake(pt.x - bp.x, pt.y - bp.y);
 			updateGolfTrajectoryMap(self, drag);
 		}
 	}
@@ -1097,10 +1199,11 @@ static void executeGolfAutoPuttStealth(SKScene *scene) {
 		[SeagullHUD attachToView:self.view gameType:@"Cup Pong" target:self.scene3d];
 	}
 
-	if (!autoCupPong) return;
+	if (!autoCupPong || [self.view viewWithTag:99103]) return;
 
 	CGFloat topInset = self.view.safeAreaInsets.top + 10.0;
 	UIButton *button = makeButton(@"Shoot", CGRectMake([UIScreen mainScreen].bounds.size.width / 2 - 50, topInset, 100, 36), self.scene3d, @selector(shootRandomCup));
+	button.tag = 99103;
 	[self.view addSubview:button];
 	[self.view bringSubviewToFront:button];
 }
@@ -1435,12 +1538,14 @@ static BeerView *gCurrentBeerView = nil;
 	if (floatingHUD) {
 		[SeagullHUD attachToView:self.view gameType:@"Word Bites" target:self];
 	}
-	if (revealWords || bitesAutoSolve) {
+	if ((revealWords || bitesAutoSolve) && ![self.view viewWithTag:99105]) {
 		CGFloat topInset = self.view.safeAreaInsets.top + 10.0;
 		UIButton *wordsBtn = makeButton(@"Words", CGRectMake([UIScreen mainScreen].bounds.size.width - 90, topInset, 75, 36), self, @selector(revealAllWordsInSheet));
+		wordsBtn.tag = 99105;
 		[self.view addSubview:wordsBtn];
 		[self.view bringSubviewToFront:wordsBtn];
 		UIButton *autoBtn = makeButton(@"Auto", CGRectMake([UIScreen mainScreen].bounds.size.width - 170, topInset, 75, 36), self, @selector(solveAndSubmitAllWords));
+		autoBtn.tag = 99106;
 		[self.view addSubview:autoBtn];
 		[self.view bringSubviewToFront:autoBtn];
 	}
@@ -1459,6 +1564,8 @@ static BeerView *gCurrentBeerView = nil;
 }
 - (void)toResult {
 	%orig;
+	[[self.view viewWithTag:99105] removeFromSuperview];
+	[[self.view viewWithTag:99106] removeFromSuperview];
 }
 %new
 - (void)revealAllWordsInSheet {
@@ -1839,9 +1946,10 @@ static void BasketballDidMoveToView(SKScene *scene, id target) {
 	if (floatingHUD) {
 		[SeagullHUD attachToView:scene.view gameType:@"Basketball" target:target];
 	}
-	if (basketAutoSwish) {
-	CGFloat topInset = scene.view.safeAreaInsets.top + 10.0;
+	if (basketAutoSwish && ![scene.view viewWithTag:99104]) {
+		CGFloat topInset = scene.view.safeAreaInsets.top + 10.0;
 		UIButton *btn = makeButton(@"Auto Swish", CGRectMake([UIScreen mainScreen].bounds.size.width / 2 - 55, topInset, 110, 36), target, @selector(gp_autoSwishShoot));
+		btn.tag = 99104;
 		@try { [target setValue:btn forKey:@"autoBasketButton"]; } @catch (id ex) {}
 		[scene.view addSubview:btn];
 		[scene.view bringSubviewToFront:btn];
@@ -1945,9 +2053,10 @@ static void BasketballAutoSwish(SKScene *scene) {
 	if (floatingHUD) {
 		[SeagullHUD attachToView:self.view gameType:@"Golf" target:self];
 	}
-	if (golfAutoPuttStealth) {
+	if (golfAutoPuttStealth && ![self.view viewWithTag:99102]) {
 		CGFloat topInset = self.view.safeAreaInsets.top + 10.0;
 		self.golfAutoButton = makeButton(@"Auto Hole-In-1", CGRectMake([UIScreen mainScreen].bounds.size.width / 2 - 65, topInset, 130, 36), self, @selector(autoShootHoleInOne));
+		self.golfAutoButton.tag = 99102;
 		[self.view addSubview:self.golfAutoButton];
 		[self.view bringSubviewToFront:self.golfAutoButton];
 	}
@@ -1958,7 +2067,8 @@ static void BasketballAutoSwish(SKScene *scene) {
 	if (golfTrajectoryMap) {
 		SKNode *ball = getGolfBallNode((SKScene *)self);
 		if (ball) {
-			CGPoint drag = CGPointMake(pt.x - ball.position.x, pt.y - ball.position.y);
+			CGPoint bp = GolfScenePoint((SKScene *)self, ball);
+			CGPoint drag = CGPointMake(pt.x - bp.x, pt.y - bp.y);
 			updateGolfTrajectoryMap((SKScene *)self, drag);
 		}
 	}
@@ -2663,20 +2773,5 @@ static void prefsNotificationCallback(CFNotificationCenterRef center, void *obse
 	);
 	loadPrefs();
 
-	if (extendLines) {
-		uint32_t patch = 0x52a9cdc8;
-		uint8_t needle[4] = { 0x08, 0x4e, 0xa8, 0x52 };
-		for (NSString *class in @[@"PoolScene", @"PoolScene2", @"PoolScene3"]) {
-			Class cls = NSClassFromString(class);
-			if (!cls) continue;
-			uint64_t method = (uint64_t)[cls instanceMethodForSelector:@selector(mMove)];
-			if (!method) continue;
-			uint64_t result = bh_memmem((const uint8_t*)method, 0x1000, needle, 4);
-			if (!result) continue;
-
-			HookMemory(cls, @selector(mMove), (result - method), patch);
-		}
-	}
-	
 	%init;
 }

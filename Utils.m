@@ -301,10 +301,19 @@ static CGFloat dotProduct2D(CGPoint a, CGPoint b) {
     return a.x * b.x + a.y * b.y;
 }
 
+// Node position in its scene's coordinate space (balls/pockets often live
+// under nested table/world nodes; raw .position is parent-space).
+static CGPoint GSGNodeScenePoint(SKNode *n) {
+    @try {
+        SKScene *sc = n.scene;
+        if (sc && n.parent) return [sc convertPoint:CGPointZero fromNode:n];
+    } @catch (id ex) {}
+    return n.position;
+}
+
 CGFloat calculateBestPoolShotAngle(CGPoint cuePos, NSArray *balls, NSArray *pockets, CGFloat ballRadius) {
     if (!balls || balls.count == 0 || !pockets || pockets.count == 0) return 0.0f;
     if (ballRadius <= 0.0f) ballRadius = 15.0f;
-
     CGFloat bestScore = -1e9f;
     CGFloat bestAngle = 0.0f;
     BOOL foundShot = NO;
@@ -315,10 +324,10 @@ CGFloat calculateBestPoolShotAngle(CGPoint cuePos, NSArray *balls, NSArray *pock
                 continue; // Skip cue ball
             }
         }
-        CGPoint bPos = b.position;
+        CGPoint bPos = GSGNodeScenePoint(b);
 
         for (SKNode *pkt in pockets) {
-            CGPoint pPos = pkt.position;
+            CGPoint pPos = GSGNodeScenePoint(pkt);
             CGPoint toPkt = CGPointMake(pPos.x - bPos.x, pPos.y - bPos.y);
             CGFloat distPkt = hypot(toPkt.x, toPkt.y);
             if (distPkt < 1.0f) continue;
@@ -341,7 +350,7 @@ CGFloat calculateBestPoolShotAngle(CGPoint cuePos, NSArray *balls, NSArray *pock
                 if ([other respondsToSelector:@selector(isStripes)] && [other respondsToSelector:@selector(isSolid)]) {
                     if (![other performSelector:@selector(isStripes)] && ![other performSelector:@selector(isSolid)]) continue;
                 }
-                CGPoint oPos = other.position;
+                CGPoint oPos = GSGNodeScenePoint(other);
                 CGPoint toOther = CGPointMake(oPos.x - cuePos.x, oPos.y - cuePos.y);
                 CGFloat proj = dotProduct2D(toOther, uCue);
                 if (proj > ballRadius && proj < distCue - ballRadius) {
@@ -836,8 +845,11 @@ CGPoint calculateShuffleImpulse(CGSize sceneSize) {
 
 CGPoint applyPoolPocketMagnet(CGPoint ballPos, CGPoint ballVel, NSArray *pockets, CGFloat magnetRadius) {
     if (!pockets || pockets.count == 0) return ballVel;
-    for (NSValue *val in pockets) {
-        CGPoint pkt = [val CGPointValue];
+    for (id item in pockets) {
+        CGPoint pkt = CGPointZero;
+        if ([item isKindOfClass:[NSValue class]]) pkt = [item CGPointValue];
+        else if ([item isKindOfClass:[SKNode class]]) pkt = GSGNodeScenePoint((SKNode *)item);
+        else continue;
         CGFloat dx = pkt.x - ballPos.x;
         CGFloat dy = pkt.y - ballPos.y;
         CGFloat dist = hypot(dx, dy);
