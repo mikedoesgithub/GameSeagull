@@ -170,7 +170,17 @@ void reloadPreferences(void) {
     }
 
     if (!gPreferences) {
-        gPreferences = [[NSDictionary alloc] initWithContentsOfFile:ROOT_PATH_NS(@"/var/mobile/Library/Preferences/com.fiore.gameseagull.prefs.plist")];
+        // NOTE: do NOT use ROOT_PATH_NS here — on rootless it prefixes
+        // /var/jb, but this plist lives in the shared mobile dir. Try every
+        // known location literally (jailbreak Settings, TrollStore, remote).
+        NSArray *candidates = @[
+            @"/var/mobile/Library/Preferences/com.fiore.gameseagull.prefs.plist",
+            @"/var/jb/var/mobile/Library/Preferences/com.fiore.gameseagull.prefs.plist"
+        ];
+        for (NSString *p in candidates) {
+            gPreferences = [[NSDictionary alloc] initWithContentsOfFile:p];
+            if (gPreferences) break;
+        }
     }
 }
 
