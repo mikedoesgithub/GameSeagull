@@ -225,7 +225,18 @@ UIButton *makeButton(NSString *title, CGRect frame, id target, SEL selector) {
     [button setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
     button.titleLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightSemibold];
     if (target && selector) {
-        [button addTarget:target action:selector forControlEvents:UIControlEventTouchUpInside];
+        // Weak dispatch: game scenes can be torn down while their buttons
+        // stay alive on the shared SKView (UIControl targets are unsafe).
+        __weak id weakTarget = target;
+        [button addAction:[UIAction actionWithHandler:^(__kindof UIAction * _Nonnull action) {
+            id t = weakTarget;
+            if (t && [t respondsToSelector:selector]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+                [t performSelector:selector];
+#pragma clang diagnostic pop
+            }
+        }] forControlEvents:UIControlEventTouchUpInside];
     }
     button.layer.cornerRadius = 14;
     button.layer.masksToBounds = YES;
@@ -897,6 +908,11 @@ static SeagullHUD *gSharedHUD = nil;
 
 + (void)attachToView:(UIView *)parentView gameType:(NSString *)gameType target:(id)target {
     if (!parentView) return;
+    // Sweep stale per-game buttons: SKView outlives scenes, and dead buttons
+    // would linger (harmless no-ops now, but visual clutter).
+    for (NSNumber *tag in @[@99101, @99102, @99103, @99104, @99105, @99106]) {
+        [[parentView viewWithTag:[tag intValue]] removeFromSuperview];
+    }
     SeagullHUD *hud = [SeagullHUD sharedHUD];
     hud.currentGameType = gameType;
     hud.currentTarget = target;
@@ -1030,6 +1046,15 @@ static SeagullHUD *gSharedHUD = nil;
     if (!parent) return;
 
     if (self.isExpanded) {
+        // Re-resolve target + rebuild: scenes come and go, the singleton
+        // outlives them — never fire at a deallocated scene.
+        @try {
+            if ([self.superview isKindOfClass:[SKView class]]) {
+                id sc = [(SKView *)self.superview scene];
+                if (sc) self.currentTarget = sc;
+            }
+        } @catch (id ex) {}
+        [self updateContentForGame:self.currentGameType];
         CGFloat hudW = fminf(330.0, parent.bounds.size.width - 32.0);
         CGFloat hudH = 340.0;
         CGFloat originX = (parent.bounds.size.width - hudW) / 2.0;
@@ -1086,14 +1111,28 @@ static SeagullHUD *gSharedHUD = nil;
     [btn.heightAnchor constraintEqualToConstant:38].active = YES;
 
     if (self.currentTarget && [self.currentTarget respondsToSelector:sel]) {
-        [btn addTarget:self.currentTarget action:sel forControlEvents:UIControlEventTouchUpInside];
+        __weak id weakTarget = self.currentTarget;
+        [btn addAction:[UIAction actionWithHandler:^(__kindof UIAction * _Nonnull action) {
+            id t = weakTarget;
+            if (t && [t respondsToSelector:sel]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+                [t performSelector:sel];
+#pragma clang diagnostic pop
+            }
+            // Deployment target is iOS 14: haptics (iOS 10+) always exist.
+            UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
+            [feedback prepare];
+            [feedback impactOccurred];
+        }] forControlEvents:UIControlEventTouchUpInside];
+    } else {
+        [btn addAction:[UIAction actionWithHandler:^(__kindof UIAction * _Nonnull action) {
+            // Deployment target is iOS 14: haptics (iOS 10+) always exist.
+            UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
+            [feedback prepare];
+            [feedback impactOccurred];
+        }] forControlEvents:UIControlEventTouchUpInside];
     }
-    [btn addAction:[UIAction actionWithHandler:^(__kindof UIAction * _Nonnull action) {
-        // Deployment target is iOS 14: haptics (iOS 10+) always exist.
-        UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
-        [feedback prepare];
-        [feedback impactOccurred];
-    }] forControlEvents:UIControlEventTouchUpInside];
     [self.stackView addArrangedSubview:btn];
 }
 
